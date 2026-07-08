@@ -70,11 +70,16 @@ export function ChatPage() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let assistant = "";
+      let buffer = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        for (const line of decoder.decode(value).split("\n")) {
+      // SSE events can be split across network chunks, so decode with
+      // stream:true and only parse whole lines — keep the trailing partial
+      // line in `buffer` until its remainder arrives on a later read.
+      const flush = (chunk: string) => {
+        buffer += chunk;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
           const t = line.trim();
           if (!t.startsWith("data:") || t.includes("[DONE]")) continue;
           try {
@@ -84,9 +89,17 @@ export function ChatPage() {
               assistant += delta;
               setMessages([...next, { role: "assistant", content: assistant }]);
             }
-          } catch { /* partial chunk */ }
+          } catch { /* not JSON — skip */ }
         }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        flush(decoder.decode(value, { stream: true }));
       }
+      // Handle any bytes/line left buffered when the stream ends.
+      flush(decoder.decode() + "\n");
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
         // User pressed Stop — keep whatever streamed so far.
