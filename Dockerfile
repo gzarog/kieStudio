@@ -10,6 +10,16 @@ ENV WRANGLER_SEND_METRICS=false \
 
 WORKDIR /app
 
+# workerd (the runtime behind `wrangler pages dev`) verifies the TLS certificate
+# of every outbound fetch — including the API calls this app forwards to
+# https://api.kie.ai. The node:*-slim base image ships without a CA bundle, so
+# without this those fetches fail with "unable to get local issuer certificate"
+# and every /api/* route (e.g. /api/validate) returns 500. Install the trust
+# store to fix it.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies first so this layer is cached across source changes.
 COPY package.json package-lock.json ./
 RUN npm ci
