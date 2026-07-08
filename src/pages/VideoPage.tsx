@@ -1,21 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { postToWorker } from "../lib/kieClient";
+import { hasApiKey } from "../lib/apiKey";
+import { requestKey, toast } from "../lib/ui";
 import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import type { VideoModel } from "../lib/types";
+
+interface VideoItem { videoUrl: string; prompt: string }
 
 export function VideoPage() {
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState<VideoModel>("veo-3.1");
   const [resolution, setResolution] = useState("1080p");
   const [duration, setDuration] = useState(5);
+  const [history, setHistory] = useState<VideoItem[]>([]);
+  const lastPrompt = useRef("");
   const { status, result, error, startPolling } = useTaskPoller<{ videoUrl: string }>("/video", 6000);
 
+  useEffect(() => {
+    if (status === "success" && result?.videoUrl) {
+      setHistory((h) => [{ videoUrl: result.videoUrl, prompt: lastPrompt.current }, ...h]);
+    }
+  }, [status, result]);
+
   async function generate() {
+    if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
+    lastPrompt.current = prompt;
     try {
       const { taskId } = await postToWorker<{ taskId: string }>("/video", { prompt, model, resolution, duration });
-      startPolling(taskId);
-    } catch (e) { alert(String(e)); }
+      startPolling(taskId, { model });
+    } catch (e) { toast(e instanceof Error ? e.message : String(e), "error"); }
   }
 
   return (
@@ -45,10 +59,16 @@ export function VideoPage() {
         </button>
       </div>
       <TaskStatusBadge status={status} error={error} />
-      {result?.videoUrl && (
-        <div className="space-y-2">
-          <video controls src={result.videoUrl} className="rounded-2xl border border-edge w-full" />
-          <a href={result.videoUrl} download className="text-sky-400 text-xs underline">Download (link expires in 14 days)</a>
+
+      {history.length > 0 && (
+        <div className="space-y-4 pt-2">
+          {history.map((item, i) => (
+            <div key={i} className="space-y-2">
+              <video controls src={item.videoUrl} className="rounded-2xl border border-edge w-full" />
+              {item.prompt && <p className="text-gray-400 text-xs truncate">{item.prompt}</p>}
+              <a href={item.videoUrl} download className="text-sky-400 text-xs underline">Download (link expires in 14 days)</a>
+            </div>
+          ))}
         </div>
       )}
     </div>

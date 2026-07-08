@@ -11,16 +11,19 @@ export function useTaskPoller<T>(statusPath: string, intervalMs = 4000) {
   const stop = useCallback(() => { if (timer.current) clearInterval(timer.current); }, []);
   useEffect(() => stop, [stop]);
 
-  const startPolling = useCallback((taskId: string) => {
+  // `params` carries extra query fields (e.g. { model }) so the worker can route
+  // per-model status endpoints.
+  const startPolling = useCallback((taskId: string, params: Record<string, string> = {}) => {
     setStatus("pending"); setResult(null); setError("");
+    const query = new URLSearchParams({ taskId, ...params }).toString();
     timer.current = setInterval(async () => {
       try {
         const d = await getFromWorker<{ status: string; result: T | null; error?: string }>(
-          `${statusPath}?taskId=${encodeURIComponent(taskId)}`
+          `${statusPath}?${query}`
         );
         if (d.status === "success") { setStatus("success"); setResult(d.result); stop(); }
         else if (d.status === "failed") { setStatus("failed"); setError(d.error ?? "Generation failed"); stop(); }
-      } catch (e) { setStatus("failed"); setError(String(e)); stop(); }
+      } catch (e) { setStatus("failed"); setError(e instanceof Error ? e.message : String(e)); stop(); }
     }, intervalMs);
   }, [statusPath, intervalMs, stop]);
 

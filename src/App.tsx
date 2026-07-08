@@ -5,7 +5,9 @@ import { ImagePage } from "./pages/ImagePage";
 import { MusicPage } from "./pages/MusicPage";
 import { VideoPage } from "./pages/VideoPage";
 import { KeyModal } from "./components/shared/KeyModal";
+import { Toaster } from "./components/shared/Toaster";
 import { hasApiKey } from "./lib/apiKey";
+import { subscribeKeyRequests } from "./lib/ui";
 
 const NAV = [
   { path: "/", label: "Chat", icon: "💬" },
@@ -19,6 +21,9 @@ export default function App() {
 
   // First visit: prompt for key
   useEffect(() => { if (!hasApiKey()) setShowKeyModal(true); }, []);
+
+  // Any page can ask the shell to open the key modal (e.g. an action with no key).
+  useEffect(() => subscribeKeyRequests(() => setShowKeyModal(true)), []);
 
   return (
     <BrowserRouter>
@@ -57,17 +62,18 @@ export default function App() {
             <NavLink key={path} to={path} end
               className={({ isActive }) =>
                 `flex flex-col items-center text-xs px-3 py-1 rounded-lg ${
-                  isActive ? "text-sky-400" : "text-gray-500"
+                  isActive ? "text-sky-400" : "text-gray-400"
                 }`}>
               <span className="text-lg">{icon}</span>{label}
             </NavLink>
           ))}
-          <button onClick={() => setShowKeyModal(true)} className="flex flex-col items-center text-xs px-3 py-1 text-gray-500">
+          <button onClick={() => setShowKeyModal(true)} className="flex flex-col items-center text-xs px-3 py-1 text-gray-400">
             <span className="text-lg">⚙️</span>Key
           </button>
         </nav>
 
         {showKeyModal && <KeyModal onClose={() => setShowKeyModal(false)} />}
+        <Toaster />
       </div>
     </BrowserRouter>
   );
