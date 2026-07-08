@@ -81,3 +81,25 @@ configure — it's BYOK, so nothing is stored server-side. Stop with `Ctrl-C` (o
 npx wrangler pages dev dist   # terminal 1 (workers on :8788)
 npm run dev                   # terminal 2 (vite on :5173, proxies /api)
 ```
+
+## Tests
+
+Unit and integration tests run on [Vitest](https://vitest.dev) with jsdom + React
+Testing Library. They cover every feature end-to-end with `fetch` stubbed — no kie.ai
+key or network is needed.
+
+```bash
+npm test              # run once (also runs in CI)
+npm run test:watch    # watch mode
+npm run test:coverage # coverage report
+```
+
+What's covered:
+
+- **Edge functions** (`functions/api/*`) — chat streaming pass-through, image/music/video
+  submit + poll routing, key validation, and the shared `_lib` helpers (per-model endpoint
+  routing, CORS, status normalization, error `guard`).
+- **Client lib** — the BYOK key store, `kieClient` request/error handling, the toast &
+  key-modal buses, and the `useTaskPoller` polling hook.
+- **UI** — `KeyModal`, `Toaster`, `TaskStatusBadge`, and each page (Chat, Image, Music,
+  Video) driven from prompt to rendered result.
