@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `npm run build` runs `tsc --noEmit && vite build` — the plan's verify gate.
+      - name: Typecheck & build
+        run: npm run build
+
+      - name: Verify bundle size (< 250 KB raw JS)
+        run: |
+          max=256000
+          total=$(find dist/assets -name '*.js' -printf '%s\n' | awk '{s+=$1} END {print s+0}')
+          echo "Raw JS bundle: ${total} bytes (limit ${max})"
+          if [ "$total" -gt "$max" ]; then
+            echo "::error::JS bundle ${total} bytes exceeds ${max} bytes budget"
+            exit 1
+          fi

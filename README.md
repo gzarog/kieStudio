@@ -22,17 +22,35 @@ Every request uses **your own** kie.ai key — nothing is stored on the server.
 > Media URLs from kie.ai **expire after 14 days** — download anything you want to keep.
 > Failed generations are **not charged**.
 
-## Deploy (2 commands)
+## Deploy
+
+### Automated (GitHub Actions)
+
+Every push to `main` builds and deploys to Cloudflare Pages via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml); every PR runs typecheck +
+build + a bundle-size gate via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+One-time setup — add two **repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Where to get it |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare dashboard → My Profile → API Tokens → create a token with **Cloudflare Pages: Edit** |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → Workers & Pages → account ID in the right sidebar |
+
+Until both secrets are set, the deploy step is skipped (with a warning) so `main` stays green.
+The pipeline injects **no** kie.ai key — the app is BYOK, so there are no app secrets.
+
+First time only, create the Pages project (once, locally):
+```bash
+npx wrangler pages project create kie-studio
+```
+
+### Manual (2 commands)
 ```bash
 npm install && npm run build
 npx wrangler pages deploy dist --project-name kie-studio
 ```
-No secrets required. Live globally on Cloudflare edge instantly.
-
-First time only:
-```bash
-npx wrangler pages project create kie-studio
-```
+No app secrets required. Live globally on Cloudflare edge instantly.
 
 ## Custom domain
 
