@@ -63,7 +63,20 @@ After the first deploy, attach a domain in the Cloudflare dashboard:
 
 No environment variables or secrets are needed on the custom domain — it stays fully BYOK.
 
-## Local dev
+## Run locally with Docker
+
+One command builds the SPA and serves it together with the Pages Functions on the same
+`workerd` edge runtime used in production:
+
+```bash
+docker compose up --build
+```
+
+Open **http://localhost:8788** and paste your kie.ai key into the 🔑 modal. No secrets to
+configure — it's BYOK, so nothing is stored server-side. Stop with `Ctrl-C` (or
+`docker compose down`).
+
+## Local dev (hot reload)
 ```bash
 npx wrangler pages dev dist   # terminal 1 (workers on :8788)
 npm run dev                   # terminal 2 (vite on :5173, proxies /api)

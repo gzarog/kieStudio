@@ -1,0 +1,25 @@
+# Run KIE Studio locally with one command:
+#
+#   docker compose up --build
+#
+# Then open http://localhost:8788 — chat, image, music and video all work once
+# you paste your kie.ai key into the 🔑 modal (it stays in your browser).
+#
+# BYOK by design: there are no server-side secrets to configure here.
+services:
+  app:
+    build: .
+    image: kie-studio
+    container_name: kie-studio
+    ports:
+      - "8788:8788"
+    environment:
+      WRANGLER_SEND_METRICS: "false"
+    restart: unless-stopped
+    healthcheck:
+      # wrangler serves the SPA at / once workerd is ready.
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8788/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
