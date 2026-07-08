@@ -1,8 +1,35 @@
 import { useState } from "react";
 import { getApiKey, setApiKey, clearApiKey } from "../../lib/apiKey";
+import { validateKey } from "../../lib/kieClient";
+import { toast } from "../../lib/ui";
+
+type Check =
+  | { state: "idle" }
+  | { state: "checking" }
+  | { state: "ok"; credits?: number }
+  | { state: "bad" };
 
 export function KeyModal({ onClose }: { onClose: () => void }) {
   const [key, setKey] = useState(getApiKey());
+  const [check, setCheck] = useState<Check>({ state: "idle" });
+
+  async function save() {
+    const trimmed = key.trim();
+    if (!trimmed) return;
+    setApiKey(trimmed);
+    setCheck({ state: "checking" });
+    const { valid, credits } = await validateKey();
+    if (valid) {
+      setCheck({ state: "ok", credits });
+      toast(
+        credits !== undefined ? `Key saved — ${credits} credits remaining` : "Key saved & verified",
+        "success"
+      );
+      setTimeout(onClose, 700);
+    } else {
+      setCheck({ state: "bad" });
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -15,17 +42,31 @@ export function KeyModal({ onClose }: { onClose: () => void }) {
         <input
           type="password"
           value={key}
-          onChange={(e) => setKey(e.target.value)}
+          onChange={(e) => { setKey(e.target.value); setCheck({ state: "idle" }); }}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); }}
           placeholder="Paste your key…"
           className="w-full bg-base border border-edge text-white rounded-lg px-3 py-2 font-mono text-sm outline-none focus:border-sky-500"
         />
-        <div className="flex gap-2 justify-end">
-          <button onClick={() => { clearApiKey(); setKey(""); }} className="px-4 py-2 text-gray-400 hover:text-white text-sm">Clear</button>
+
+        {check.state === "ok" && (
+          <p className="text-emerald-400 text-sm">
+            ✓ Verified{check.credits !== undefined ? ` — ${check.credits} credits remaining` : ""}
+          </p>
+        )}
+        {check.state === "bad" && (
+          <p className="text-red-400 text-sm">✗ Key rejected by kie.ai. Double-check and try again.</p>
+        )}
+
+        <div className="flex gap-2 justify-end items-center">
           <button
-            onClick={() => { setApiKey(key); onClose(); }}
-            disabled={!key.trim()}
+            onClick={() => { clearApiKey(); setKey(""); setCheck({ state: "idle" }); }}
+            className="px-4 py-2 text-gray-400 hover:text-white text-sm"
+          >Clear</button>
+          <button
+            onClick={save}
+            disabled={!key.trim() || check.state === "checking"}
             className="px-4 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg text-sm font-medium"
-          >Save key</button>
+          >{check.state === "checking" ? "Verifying…" : "Save key"}</button>
         </div>
       </div>
     </div>

@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { postToWorker } from "../lib/kieClient";
+import { hasApiKey } from "../lib/apiKey";
+import { requestKey, toast } from "../lib/ui";
 import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import type { Track, SunoModel } from "../lib/types";
@@ -8,13 +10,22 @@ export function MusicPage() {
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState<SunoModel>("V4_5");
   const [instrumental, setInstrumental] = useState(false);
+  const [history, setHistory] = useState<Track[]>([]);
   const { status, result, error, startPolling } = useTaskPoller<Track[]>("/music");
 
+  // Prepend each finished batch of tracks to the session history (newest first).
+  useEffect(() => {
+    if (status === "success" && result?.length) {
+      setHistory((h) => [...result, ...h]);
+    }
+  }, [status, result]);
+
   async function generate() {
+    if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
     try {
       const { taskId } = await postToWorker<{ taskId: string }>("/music", { prompt, model, instrumental });
       startPolling(taskId);
-    } catch (e) { alert(String(e)); }
+    } catch (e) { toast(e instanceof Error ? e.message : String(e), "error"); }
   }
 
   return (
@@ -39,12 +50,13 @@ export function MusicPage() {
         </button>
       </div>
       <TaskStatusBadge status={status} error={error} />
-      {result?.map((t) => (
+
+      {history.map((t) => (
         <div key={t.id} className="bg-surface border border-edge rounded-2xl p-4 flex gap-4">
           <img src={t.imageUrl} alt={t.title} className="w-20 h-20 rounded-xl object-cover" />
           <div className="flex-1 min-w-0 space-y-1.5">
             <p className="text-white font-medium truncate">{t.title}</p>
-            <p className="text-gray-500 text-xs truncate">{t.tags}</p>
+            <p className="text-gray-400 text-xs truncate">{t.tags}</p>
             <audio controls src={t.audioUrl} className="w-full h-9" />
             <a href={t.audioUrl} download className="text-sky-400 text-xs underline">Download MP3 (link expires in 14 days)</a>
           </div>
