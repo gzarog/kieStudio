@@ -10,6 +10,7 @@ const CAP_LABEL: Record<Capability, string> = {
   t2v: "T2V",
   i2v: "I2V",
   music: "Music",
+  tts: "TTS",
 };
 
 /** Small capability chips shown beneath the picker for the selected model. */

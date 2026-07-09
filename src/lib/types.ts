@@ -23,9 +23,9 @@ export interface Track {
 // absent (docs.kie.ai is network-gated here) and tracked in the phase summary;
 // adding one later is a single row in the arrays below.
 
-export type ModelCategory = "chat" | "image" | "video" | "music";
+export type ModelCategory = "chat" | "image" | "video" | "music" | "speech";
 
-export type Capability = "chat" | "t2i" | "i2i" | "edit" | "upscale" | "t2v" | "i2v" | "music";
+export type Capability = "chat" | "t2i" | "i2i" | "edit" | "upscale" | "t2v" | "i2v" | "music" | "tts";
 
 /** UI hints for which extra controls a model's `input` accepts. */
 export type InputHint = "size" | "resolution" | "duration" | "image" | "instrumental";
@@ -117,6 +117,10 @@ export const MODEL_CATALOG: CatalogModel[] = [
   { id: "hailuo/02-image-to-video-standard", label: "Hailuo 02 Std (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
   { id: "wan/2-5-text-to-video", label: "Wan 2.5 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
   { id: "wan/2-5-image-to-video", label: "Wan 2.5 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
+
+  // ── Speech / TTS (Unified Jobs API — via the generic /api/jobs proxy) ──
+  { id: "elevenlabs/text-to-speech-turbo-2-5", label: "ElevenLabs Turbo 2.5", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
+  { id: "elevenlabs/text-to-speech-multilingual-v2", label: "ElevenLabs Multilingual V2", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
 
   // ── Music (dedicated Suno /generate router) ──
   { id: "V5_5", label: "Suno V5.5", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },

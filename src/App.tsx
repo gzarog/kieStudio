@@ -4,6 +4,7 @@ import { ChatPage } from "./pages/ChatPage";
 import { ImagePage } from "./pages/ImagePage";
 import { MusicPage } from "./pages/MusicPage";
 import { VideoPage } from "./pages/VideoPage";
+import { SpeechPage } from "./pages/SpeechPage";
 import { KeyModal } from "./components/shared/KeyModal";
 import { Toaster } from "./components/shared/Toaster";
 import { hasApiKey } from "./lib/apiKey";
@@ -14,6 +15,7 @@ const NAV = [
   { path: "/image", label: "Image", icon: "🖼️" },
   { path: "/music", label: "Music", icon: "🎵" },
   { path: "/video", label: "Video", icon: "🎬" },
+  { path: "/speech", label: "Speech", icon: "🗣️" },
 ];
 
 export default function App() {
@@ -53,6 +55,7 @@ export default function App() {
             <Route path="/image" element={<ImagePage />} />
             <Route path="/music" element={<MusicPage />} />
             <Route path="/video" element={<VideoPage />} />
+            <Route path="/speech" element={<SpeechPage />} />
           </Routes>
         </main>
 
