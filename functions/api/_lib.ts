@@ -1,45 +1,80 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // kie.ai endpoint contracts (base: https://api.kie.ai/api/v1)
 //
-// | Feature | Submit                          | Status (poll)                         | Status field / values                 |
-// |---------|---------------------------------|---------------------------------------|---------------------------------------|
-// | Chat    | POST /chat/completions          | — (SSE stream, OpenAI-compatible)     | n/a                                    |
-// | Music   | POST /generate                  | GET /generate/record-info?taskId=     | data.status: GENERATING|SUCCESS|FAILED |
-// | Image   | POST <per-model>/generate       | GET <per-model>/record-info?taskId=   | data.status: GENERATING|SUCCESS|FAILED |
-// | Video   | POST <per-model>/generate       | GET <per-model>/record-info?taskId=   | data.status / state / successFlag      |
+// VERIFIED against KIE-API-VERIFIED.md (docs.kie.ai, 2026-07-09).
 //
-// NOTE: Live verification (Phase 1) is BLOCKED — docs.kie.ai is auth-gated (403)
-// and no TEST_KIE_KEY is available in this environment. The per-model routing
-// below reflects the documented conventions; adjust the ENDPOINTS values once a
-// real key is available and a submit call returns a taskId. Status parsing is
-// normalized defensively via `normalizeStatus` so unexpected casings still map.
+// Unified Jobs API (all Market models — image, most video, TTS, …):
+//   Submit:  POST /jobs/createTask   body { model, input, callBackUrl? } → { code, msg, data:{ taskId } }
+//   Poll:    GET  /jobs/recordInfo?taskId=<id>
+//            data.state ∈ waiting | queuing | generating | success | fail   (LOWERCASE)
+//            data.resultJson is a STRINGIFIED JSON — JSON.parse it, read resultUrls[]
+//            generated URLs may expire in as little as 24h; account media retention 14d
+//
+// Dedicated routers (kept separate — verified distinct contracts):
+//   Chat:  POST /chat/completions           (OpenAI-compatible SSE)
+//   Suno:  POST /generate + GET /generate/record-info
+//   Veo:   POST /veo/generate + GET /veo/record-info   (successFlag/resultUrls shape)
+//
+// BYOK invariant: the user key arrives as `X-KIE-Key`, is forwarded as
+// `Authorization: Bearer <key>`, and is never stored or logged server-side.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const KIE_BASE = "https://api.kie.ai/api/v1";
 
-/** Per-model submit/status paths (relative to KIE_BASE). */
-export type EndpointPair = { submit: string; status: string };
+// ── Unified Jobs API ─────────────────────────────────────────────────────────
 
-export const IMAGE_ENDPOINTS: Record<string, EndpointPair> = {
-  "gpt-image-2": { submit: "/gpt4o-image/generate", status: "/gpt4o-image/record-info" },
-  "nano-banana": { submit: "/nano-banana/generate", status: "/nano-banana/record-info" },
+export const JOBS_CREATE = "/jobs/createTask";
+export const JOBS_STATUS = "/jobs/recordInfo";
+
+/**
+ * Friendly model key (used by the frontend / legacy routes) → the exact,
+ * VERIFIED Jobs API `model` identifier. Naming is NOT uniform across providers,
+ * so these strings are copied verbatim from KIE-API-VERIFIED.md — never inferred.
+ * Additional Market models are added frontend-side via the generic /api/jobs route.
+ */
+export const JOBS_MODEL_IDS: Record<string, string> = {
+  "gpt-image-2": "gpt-image-2-text-to-image",
+  "nano-banana": "nano-banana-pro",
+  "kling-3.0": "kling-3.0/video",
+  "seedance-2.0": "bytedance/seedance-2",
 };
 
-export const VIDEO_ENDPOINTS: Record<string, EndpointPair> = {
-  "veo-3.1": { submit: "/veo/generate", status: "/veo/record-info" },
-  "kling-3.0": { submit: "/kling/generate", status: "/kling/record-info" },
-  "seedance-2.0": { submit: "/seedance/generate", status: "/seedance/record-info" },
-};
-
-/** Generic fallback used when a model isn't in the per-model maps. */
-export const IMAGE_FALLBACK: EndpointPair = { submit: "/image/generate", status: "/image/record-info" };
-export const VIDEO_FALLBACK: EndpointPair = { submit: "/video/generate", status: "/video/record-info" };
-
-export function imageEndpoint(model?: string): EndpointPair {
-  return (model && IMAGE_ENDPOINTS[model]) || IMAGE_FALLBACK;
+/** Resolve a friendly key to its Jobs identifier; pass through already-exact ids. */
+export function jobsModelId(model?: string): string {
+  return (model && JOBS_MODEL_IDS[model]) || model || "";
 }
-export function videoEndpoint(model?: string): EndpointPair {
-  return (model && VIDEO_ENDPOINTS[model]) || VIDEO_FALLBACK;
+
+/** Submit a Jobs API task. Returns the raw fetch Response (caller reads data.taskId). */
+export function createJob(key: string, model: string, input: unknown, callBackUrl?: string) {
+  const body: Record<string, unknown> = { model, input };
+  if (callBackUrl) body.callBackUrl = callBackUrl;
+  return fetch(`${KIE_BASE}${JOBS_CREATE}`, {
+    method: "POST",
+    headers: kieHeaders(key),
+    body: JSON.stringify(body),
+  });
+}
+
+/** Poll a Jobs API task by id. Returns the raw fetch Response. */
+export function jobStatus(key: string, taskId: string) {
+  return fetch(`${KIE_BASE}${JOBS_STATUS}?taskId=${encodeURIComponent(taskId)}`, {
+    headers: kieHeaders(key),
+  });
+}
+
+/**
+ * recordInfo returns `resultJson` as a STRINGIFIED JSON blob. Parse it defensively
+ * and pull out the media URLs, tolerating both `resultUrls` and `result_urls`.
+ */
+export function parseJobResult(resultJson?: string | null): { resultUrls: string[] } {
+  if (!resultJson) return { resultUrls: [] };
+  try {
+    const parsed = typeof resultJson === "string" ? JSON.parse(resultJson) : resultJson;
+    const urls = parsed?.resultUrls ?? parsed?.result_urls ?? [];
+    return { resultUrls: Array.isArray(urls) ? urls.filter(Boolean) : [] };
+  } catch {
+    return { resultUrls: [] };
+  }
 }
 
 // ── Auth / headers ───────────────────────────────────────────────────────────
@@ -99,8 +134,9 @@ export type NormalizedStatus = "pending" | "success" | "failed";
 
 /**
  * Map kie.ai's varied status shapes to our 3-state contract.
- * Handles: data.status (SUCCESS/FAILED/GENERATING), data.state,
- * data.successFlag (1 = success, 0/2/3 = failed), and *_ERROR strings.
+ * Handles the Jobs API `state` (lowercase: waiting|queuing|generating|success|fail),
+ * the dedicated routers' `status` (SUCCESS|FAILED|GENERATING), and the Veo-style
+ * `successFlag` (1 = success, 2/3 = failed, 0 = pending).
  */
 export function normalizeStatus(data: {
   status?: string;
@@ -110,15 +146,21 @@ export function normalizeStatus(data: {
   const raw = String(data.status ?? data.state ?? "").toUpperCase();
 
   if (raw === "SUCCESS" || raw === "COMPLETED" || raw === "SUCCEED") return "success";
-  if (raw === "FAILED" || raw === "ERROR" || raw.includes("ERROR") || raw === "CANCELED")
+  if (
+    raw === "FAIL" ||
+    raw === "FAILED" ||
+    raw === "ERROR" ||
+    raw.includes("ERROR") ||
+    raw === "CANCELED"
+  )
     return "failed";
 
-  // Some video models report only successFlag: 1 = done, 2/3 = failed, 0 = pending.
+  // Some video models (Veo) report only successFlag: 1 = done, 2/3 = failed, 0 = pending.
   if (data.successFlag !== undefined) {
     const flag = Number(data.successFlag);
     if (flag === 1) return "success";
     if (flag === 2 || flag === 3) return "failed";
   }
 
-  return "pending"; // GENERATING, WAITING, QUEUEING, PENDING, "", …
+  return "pending"; // waiting, queuing, generating, WAITING, PENDING, "", …
 }

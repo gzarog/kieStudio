@@ -19,18 +19,23 @@ describe("image submit (POST)", () => {
     expect((await submit({ prompt: "   ", model: "gpt-image-2" })).status).toBe(400);
   });
 
-  it("routes to the per-model submit endpoint and returns the taskId", async () => {
+  it("submits to the Jobs API with the mapped model id and prompt input", async () => {
     const fetchMock = mockFetchSequence(fetchResponse({ data: { taskId: "T1" } }));
-    const res = await submit({ prompt: "a cat", model: "nano-banana", size: "1024x1024" });
+    const res = await submit({ prompt: "a cat", model: "nano-banana" });
 
     expect(await res.json()).toEqual({ taskId: "T1" });
-    expect(fetchMock.mock.calls[0][0]).toBe("https://api.kie.ai/api/v1/nano-banana/generate");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.kie.ai/api/v1/jobs/createTask");
+    expect(JSON.parse(init.body)).toEqual({ model: "nano-banana-pro", input: { prompt: "a cat" } });
   });
 
-  it("uses the fallback endpoint for an unknown model", async () => {
+  it("merges caller-supplied input over the prompt", async () => {
     const fetchMock = mockFetchSequence(fetchResponse({ data: { taskId: "T2" } }));
-    await submit({ prompt: "a cat", model: "mystery", size: "512x512" });
-    expect(fetchMock.mock.calls[0][0]).toBe("https://api.kie.ai/api/v1/image/generate");
+    await submit({ prompt: "a cat", model: "gpt-image-2", input: { image_size: "1024x1024" } });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      model: "gpt-image-2-text-to-image",
+      input: { prompt: "a cat", image_size: "1024x1024" },
+    });
   });
 
   it("propagates an upstream error with its status", async () => {
@@ -50,39 +55,39 @@ describe("image poll (GET)", () => {
     expect((await poll("model=gpt-image-2")).status).toBe(400);
   });
 
-  it("returns success with imageUrl from response.imageUrl", async () => {
-    mockFetchSequence(
-      fetchResponse({ data: { status: "SUCCESS", response: { imageUrl: "http://img/1.png" } } })
+  it("polls /jobs/recordInfo and returns imageUrl from parsed resultJson", async () => {
+    const fetchMock = mockFetchSequence(
+      fetchResponse({
+        data: { state: "success", resultJson: JSON.stringify({ resultUrls: ["http://img/1.png"] }) },
+      })
     );
     const res = await poll("taskId=T1&model=gpt-image-2");
-    expect(await res.json()).toEqual({ status: "success", result: { imageUrl: "http://img/1.png" } });
-  });
-
-  it("falls back to resultUrls[0] when imageUrl absent", async () => {
-    mockFetchSequence(
-      fetchResponse({ data: { status: "SUCCESS", response: { resultUrls: ["http://img/2.png"] } } })
+    expect(await res.json()).toEqual({
+      status: "success",
+      result: { imageUrl: "http://img/1.png", resultUrls: ["http://img/1.png"] },
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.kie.ai/api/v1/jobs/recordInfo?taskId=T1"
     );
-    const res = await poll("taskId=T1&model=gpt-image-2");
-    expect((await res.json()).result.imageUrl).toBe("http://img/2.png");
   });
 
-  it("returns failed with the upstream error message", async () => {
-    mockFetchSequence(fetchResponse({ data: { status: "FAILED", errorMessage: "nsfw" } }));
+  it("returns failed with the upstream failMsg on state 'fail'", async () => {
+    mockFetchSequence(fetchResponse({ data: { state: "fail", failMsg: "nsfw" } }));
     const res = await poll("taskId=T1&model=gpt-image-2");
     expect(await res.json()).toEqual({ status: "failed", result: null, error: "nsfw" });
   });
 
   it("returns pending while still generating", async () => {
-    mockFetchSequence(fetchResponse({ data: { status: "GENERATING" } }));
+    mockFetchSequence(fetchResponse({ data: { state: "generating" } }));
     const res = await poll("taskId=T1&model=gpt-image-2");
     expect(await res.json()).toEqual({ status: "pending", result: null });
   });
 
-  it("uses the per-model status endpoint and encodes the taskId", async () => {
-    const fetchMock = mockFetchSequence(fetchResponse({ data: { status: "GENERATING" } }));
+  it("encodes the taskId in the recordInfo query", async () => {
+    const fetchMock = mockFetchSequence(fetchResponse({ data: { state: "waiting" } }));
     await poll("taskId=a%2Fb&model=nano-banana");
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.kie.ai/api/v1/nano-banana/record-info?taskId=a%2Fb"
+      "https://api.kie.ai/api/v1/jobs/recordInfo?taskId=a%2Fb"
     );
   });
 });
