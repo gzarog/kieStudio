@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { loadHistory } from "../../lib/history";
+import { emitNewSession, emitDeleteEntry } from "../../lib/sessionBus";
 
 interface SessionEntry {
   label: string;
@@ -66,20 +67,36 @@ export function SessionSidebar({ page }: { page: string }) {
 
   return (
     <aside className="hidden md:flex w-56 bg-surface/40 border-r border-edge flex-col shrink-0 overflow-hidden">
-      <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider px-4 pt-4 pb-2">
-        {PAGE_LABELS[page] ?? "Sessions"}
-      </p>
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">
+          {PAGE_LABELS[page] ?? "Sessions"}
+        </p>
+        <button
+          onClick={() => { emitNewSession(); refresh(); }}
+          className="px-2 py-0.5 rounded-md text-[10px] font-medium text-sky-400 hover:bg-sky-600/20 transition-colors"
+          title="New session">
+          + New
+        </button>
+      </div>
       <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
         {entries.length === 0 && (
           <p className="text-gray-500 text-xs px-2 py-3">No sessions yet. Generate something to see it here.</p>
         )}
         {entries.map((e, i) => (
           <div key={i}
-            className="px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-white/5 cursor-default transition-colors">
-            <p className="truncate">{e.label}</p>
-            {e.createdAt && (
-              <p className="text-gray-500 text-[10px] mt-0.5">{timeAgo(e.createdAt)}</p>
-            )}
+            className="group flex items-start gap-1 px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-white/5 cursor-default transition-colors">
+            <div className="flex-1 min-w-0">
+              <p className="truncate">{e.label}</p>
+              {e.createdAt && (
+                <p className="text-gray-500 text-[10px] mt-0.5">{timeAgo(e.createdAt)}</p>
+              )}
+            </div>
+            <button
+              onClick={(ev) => { ev.stopPropagation(); emitDeleteEntry(i); refresh(); }}
+              className="shrink-0 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity text-sm leading-none mt-0.5"
+              title="Delete">
+              &times;
+            </button>
           </div>
         ))}
       </div>

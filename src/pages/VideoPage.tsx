@@ -10,6 +10,7 @@ import { ExpiryBadge } from "../components/shared/ExpiryBadge";
 import { loadHistory, saveHistory } from "../lib/history";
 import { uploadFile } from "../lib/upload";
 import { defaultModel, imageCapableModels, imageInputFor } from "../lib/types";
+import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
 
 type Mode = "t2v" | "i2v";
 
@@ -37,8 +38,13 @@ export function VideoPage() {
     }
   }, [status, result]);
 
-  // Persist history across sessions (localStorage — BYOK, nothing server-side).
   useEffect(() => saveHistory("video", history), [history]);
+
+  useEffect(() => {
+    const unsub1 = onNewSession(() => { setPrompt(""); setSourceUrl(""); });
+    const unsub2 = onDeleteEntry((i) => setHistory((h) => { const next = h.filter((_, idx) => idx !== i); saveHistory("video", next); return next; }));
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   async function handleFile(file: File) {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }

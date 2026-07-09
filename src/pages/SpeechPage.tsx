@@ -8,6 +8,7 @@ import { ModelPicker } from "../components/shared/ModelPicker";
 import { ExpiryBadge } from "../components/shared/ExpiryBadge";
 import { loadHistory, saveHistory } from "../lib/history";
 import { defaultModel } from "../lib/types";
+import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
 
 // Verified per-model defaults: Turbo 2.5 documents a voice ID default (James),
 // Multilingual V2's example uses a preset name. Both accept either form.
@@ -38,8 +39,13 @@ export function SpeechPage() {
     }
   }, [status, result]);
 
-  // Persist history across sessions (localStorage — BYOK, nothing server-side).
   useEffect(() => saveHistory("speech", history), [history]);
+
+  useEffect(() => {
+    const unsub1 = onNewSession(() => setText(""));
+    const unsub2 = onDeleteEntry((i) => setHistory((h) => { const next = h.filter((_, idx) => idx !== i); saveHistory("speech", next); return next; }));
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   function pickModel(id: string) {
     setModel(id);

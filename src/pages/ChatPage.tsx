@@ -4,6 +4,7 @@ import { hasApiKey } from "../lib/apiKey";
 import { requestKey, toast } from "../lib/ui";
 import { ModelPicker } from "../components/shared/ModelPicker";
 import { defaultModel } from "../lib/types";
+import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
 import type { ChatMessage } from "../lib/types";
 
 const STORE_KEY = "kie_chat_history";
@@ -43,6 +44,12 @@ export function ChatPage() {
     setMessages([]);
     sessionStorage.removeItem(STORE_KEY);
   }
+
+  useEffect(() => {
+    const unsub1 = onNewSession(() => { abortRef.current?.abort(); abortRef.current = null; setBusy(false); setMessages([]); sessionStorage.removeItem(STORE_KEY); });
+    const unsub2 = onDeleteEntry(() => { abortRef.current?.abort(); abortRef.current = null; setBusy(false); setMessages([]); sessionStorage.removeItem(STORE_KEY); });
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   async function copy(text: string) {
     try {
