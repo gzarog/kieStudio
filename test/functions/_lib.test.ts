@@ -211,6 +211,22 @@ describe("_lib: normalizeStatus", () => {
     expect(normalizeStatus({ status: "SUCCESS", successFlag: 2 })).toBe("success");
   });
 
+  it("maps the Suno compound statuses (Phase 4 detail endpoints)", () => {
+    for (const s of ["CREATE_TASK_FAILED", "GENERATE_AUDIO_FAILED", "GENERATE_WAV_FAILED",
+      "GENERATE_LYRICS_FAILED", "SENSITIVE_WORD_ERROR", "CALLBACK_EXCEPTION"]) {
+      expect(normalizeStatus({ status: s })).toBe("failed");
+    }
+    // Interim extend/generate stages are still pending, not success.
+    expect(normalizeStatus({ status: "TEXT_SUCCESS" })).toBe("pending");
+    expect(normalizeStatus({ status: "FIRST_SUCCESS" })).toBe("pending");
+  });
+
+  it("accepts the Suno string successFlag vocabulary (wav / vocal-removal)", () => {
+    expect(normalizeStatus({ successFlag: "SUCCESS" })).toBe("success");
+    expect(normalizeStatus({ successFlag: "PENDING" })).toBe("pending");
+    expect(normalizeStatus({ successFlag: "GENERATE_WAV_FAILED" })).toBe("failed");
+  });
+
   it("defaults unknown / pending shapes to pending", () => {
     for (const s of ["GENERATING", "WAITING", "QUEUING", "PENDING", ""]) {
       expect(normalizeStatus({ status: s })).toBe("pending");
