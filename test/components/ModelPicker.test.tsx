@@ -21,6 +21,15 @@ describe("<ModelPicker />", () => {
     expect(badges.textContent).toContain("I2I");
   });
 
+  it("restricts options to the given capability", () => {
+    render(<ModelPicker category="image" capability="t2i" value="gpt-image-2" onChange={() => {}} />);
+    const select = screen.getByLabelText("Model") as HTMLSelectElement;
+    const values = [...select.querySelectorAll("option")].map((o) => o.value);
+    expect(values).toContain("gpt-image-2");
+    // an edit-only model is filtered out of the t2i picker
+    expect(values).not.toContain("ideogram/v3-edit");
+  });
+
   it("calls onChange with the picked model id", () => {
     const onChange = vi.fn();
     render(<ModelPicker category="video" value="veo-3.1" onChange={onChange} />);

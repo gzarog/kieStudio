@@ -30,12 +30,14 @@ interface ModelPickerProps {
   category: ModelCategory;
   value: string;
   onChange: (id: string) => void;
+  /** Restrict the options to models advertising this capability. */
+  capability?: Capability;
   className?: string;
 }
 
 /** Catalog-driven model select: options grouped by provider, capability badges below. */
-export function ModelPicker({ category, value, onChange, className }: ModelPickerProps) {
-  const models = catalogByCategory(category);
+export function ModelPicker({ category, value, onChange, capability, className }: ModelPickerProps) {
+  const models = catalogByCategory(category, capability);
   const selected = catalogModel(value);
 
   return (

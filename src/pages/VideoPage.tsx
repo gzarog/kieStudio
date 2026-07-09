@@ -40,7 +40,7 @@ export function VideoPage() {
         placeholder="Drone shot over Santorini at golden hour, cinematic motion…"
         className="w-full bg-surface border border-edge text-white rounded-xl p-3 text-sm font-mono outline-none focus:border-sky-500" />
       <div className="flex items-center gap-3 flex-wrap">
-        <ModelPicker category="video" value={model} onChange={setModel} />
+        <ModelPicker category="video" capability="t2v" value={model} onChange={setModel} />
         <select value={resolution} onChange={(e) => setResolution(e.target.value)}
           className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
           <option>720p</option><option>1080p</option>

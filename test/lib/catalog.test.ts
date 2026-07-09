@@ -29,6 +29,16 @@ describe("model catalog", () => {
     expect(image[0].id).toBe("gpt-image-2");
   });
 
+  it("filters a category by capability", () => {
+    const t2i = catalogByCategory("image", "t2i");
+    expect(t2i.length).toBeGreaterThan(0);
+    expect(t2i.every((m) => m.capabilities.includes("t2i"))).toBe(true);
+    // an edit-only model is excluded from the t2i view
+    expect(t2i.find((m) => m.id === "ideogram/v3-edit")).toBeUndefined();
+    // but present in the unfiltered view
+    expect(catalogByCategory("image").find((m) => m.id === "ideogram/v3-edit")).toBeDefined();
+  });
+
   it("catalogModel looks up by exact id", () => {
     expect(catalogModel("kling-3.0")?.label).toBe("Kling 3.0");
     expect(catalogModel("nope")).toBeUndefined();

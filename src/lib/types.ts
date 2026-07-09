@@ -37,32 +37,68 @@ export interface CatalogModel {
   inputs?: InputHint[];
 }
 
+// Every `id` below is either in KIE-API-VERIFIED.md or stated verbatim in the
+// official docs index (llms.txt) description — never inferred from a URL path.
+// Chat model identifiers are intentionally limited to the three already in
+// production use: the docs index does not state chat `model` strings and the
+// existing ids mix dashed/dotted forms, so the rest await the doc page bodies.
 export const MODEL_CATALOG: CatalogModel[] = [
-  // Chat (dedicated /chat/completions router — OpenAI-compatible)
+  // ── Chat (dedicated /chat/completions router — OpenAI-compatible) ──
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gpt-4o", label: "GPT-4o", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
 
-  // Image (Unified Jobs API)
+  // ── Image (Unified Jobs API) ──
   { id: "gpt-image-2", label: "GPT Image 2", provider: "OpenAI", category: "image", capabilities: ["t2i"], verified: true, inputs: ["size"] },
-  { id: "nano-banana", label: "Nano Banana", provider: "Google", category: "image", capabilities: ["t2i", "i2i"], verified: true, inputs: ["image"] },
+  { id: "nano-banana", label: "Nano Banana Pro", provider: "Google", category: "image", capabilities: ["t2i", "i2i"], verified: true, inputs: ["image"] },
+  { id: "google/nano-banana", label: "Nano Banana", provider: "Google", category: "image", capabilities: ["t2i", "i2i"], verified: true, inputs: ["image"] },
   { id: "grok-imagine/text-to-image", label: "Grok Imagine (T2I)", provider: "xAI", category: "image", capabilities: ["t2i"], verified: true },
   { id: "grok-imagine/image-to-image", label: "Grok Imagine (I2I)", provider: "xAI", category: "image", capabilities: ["i2i"], verified: true, inputs: ["image"] },
+  { id: "flux-2/flex-image-to-image", label: "Flux-2 Flex (I2I)", provider: "Flux", category: "image", capabilities: ["i2i"], verified: true, inputs: ["image"] },
+  { id: "flux-2/pro-image-to-image", label: "Flux-2 Pro (I2I)", provider: "Flux", category: "image", capabilities: ["i2i"], verified: true, inputs: ["image"] },
+  { id: "ideogram/v3-text-to-image", label: "Ideogram V3 (T2I)", provider: "Ideogram", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "ideogram/v3-edit", label: "Ideogram V3 Edit", provider: "Ideogram", category: "image", capabilities: ["edit"], verified: true, inputs: ["image"] },
+  { id: "ideogram/v3-remix", label: "Ideogram V3 Remix", provider: "Ideogram", category: "image", capabilities: ["edit"], verified: true, inputs: ["image"] },
+  { id: "ideogram/character", label: "Ideogram Character", provider: "Ideogram", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "ideogram/character-edit", label: "Ideogram Character Edit", provider: "Ideogram", category: "image", capabilities: ["edit"], verified: true, inputs: ["image"] },
+  { id: "ideogram/character-remix", label: "Ideogram Character Remix", provider: "Ideogram", category: "image", capabilities: ["edit"], verified: true, inputs: ["image"] },
+  { id: "qwen2/text-to-image", label: "Qwen2 (T2I)", provider: "Qwen", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "qwen2/image-edit", label: "Qwen2 Edit", provider: "Qwen", category: "image", capabilities: ["edit"], verified: true, inputs: ["image"] },
+  { id: "qwen/image-edit", label: "Qwen Edit", provider: "Qwen", category: "image", capabilities: ["edit"], verified: true, inputs: ["image"] },
+  { id: "recraft/remove-background", label: "Recraft Remove BG", provider: "Recraft", category: "image", capabilities: ["edit"], verified: true, inputs: ["image"] },
 
-  // Video (Unified Jobs API, except Veo which keeps its dedicated router)
+  // ── Video (Unified Jobs API, except Veo which keeps its dedicated router) ──
   { id: "veo-3.1", label: "Veo 3.1", provider: "Google", category: "video", capabilities: ["t2v", "i2v"], verified: true, dedicated: true, inputs: ["resolution", "duration", "image"] },
   { id: "kling-3.0", label: "Kling 3.0", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["resolution", "duration"] },
   { id: "seedance-2.0", label: "Seedance 2.0", provider: "ByteDance", category: "video", capabilities: ["t2v"], verified: true, inputs: ["resolution", "duration"] },
   { id: "gemini-omni-video", label: "Gemini Omni Video", provider: "Google", category: "video", capabilities: ["t2v"], verified: true, inputs: ["duration"] },
+  { id: "bytedance/v1-pro-text-to-video", label: "ByteDance V1 Pro (T2V)", provider: "ByteDance", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "bytedance/v1-pro-image-to-video", label: "ByteDance V1 Pro (I2V)", provider: "ByteDance", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
+  { id: "bytedance/v1-lite-text-to-video", label: "ByteDance V1 Lite (T2V)", provider: "ByteDance", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "bytedance/v1-lite-image-to-video", label: "ByteDance V1 Lite (I2V)", provider: "ByteDance", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
+  { id: "hailuo/2-3-image-to-video-pro", label: "Hailuo 2.3 Pro (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
+  { id: "hailuo/2-3-image-to-video-standard", label: "Hailuo 2.3 Std (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
+  { id: "hailuo/02-text-to-video-pro", label: "Hailuo 02 Pro (T2V)", provider: "Hailuo", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "hailuo/02-text-to-video-standard", label: "Hailuo 02 Std (T2V)", provider: "Hailuo", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "hailuo/02-image-to-video-pro", label: "Hailuo 02 Pro (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
+  { id: "hailuo/02-image-to-video-standard", label: "Hailuo 02 Std (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
+  { id: "wan/2-5-text-to-video", label: "Wan 2.5 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "wan/2-5-image-to-video", label: "Wan 2.5 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
 
-  // Music (dedicated Suno /generate router)
+  // ── Music (dedicated Suno /generate router) ──
   { id: "V5_5", label: "Suno V5.5", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
   { id: "V4_5", label: "Suno V4.5", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
 ];
 
-/** All catalog models for a category, in catalog (curated) order. */
-export function catalogByCategory(category: ModelCategory): CatalogModel[] {
-  return MODEL_CATALOG.filter((m) => m.category === category);
+/**
+ * Catalog models for a category, in curated order. Pass `capability` to keep
+ * only models that advertise it (e.g. "t2i" to hide edit/i2i models from a
+ * text-to-image picker until the image-upload flow wires them in Phase 3).
+ */
+export function catalogByCategory(category: ModelCategory, capability?: Capability): CatalogModel[] {
+  return MODEL_CATALOG.filter(
+    (m) => m.category === category && (!capability || m.capabilities.includes(capability))
+  );
 }
 
 /** Look up a single model by its exact id. */
