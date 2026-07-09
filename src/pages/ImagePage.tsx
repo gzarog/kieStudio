@@ -4,7 +4,8 @@ import { hasApiKey } from "../lib/apiKey";
 import { requestKey, toast } from "../lib/ui";
 import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
-import type { ImageModel } from "../lib/types";
+import { ModelPicker } from "../components/shared/ModelPicker";
+import { defaultModel } from "../lib/types";
 
 const SIZES = ["512x512", "1024x1024", "2048x2048"];
 
@@ -12,7 +13,7 @@ interface ImageItem { imageUrl: string; prompt: string }
 
 export function ImagePage() {
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState<ImageModel>("gpt-image-2");
+  const [model, setModel] = useState<string>(defaultModel("image"));
   const [size, setSize] = useState("1024x1024");
   const [history, setHistory] = useState<ImageItem[]>([]);
   const lastPrompt = useRef("");
@@ -41,11 +42,7 @@ export function ImagePage() {
         placeholder="Sunset over the Aegean, oil painting, cinematic…"
         className="w-full bg-surface border border-edge text-white rounded-xl p-3 text-sm font-mono outline-none focus:border-sky-500" />
       <div className="flex items-center gap-4">
-        <select value={model} onChange={(e) => setModel(e.target.value as ImageModel)}
-          className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
-          <option value="gpt-image-2">GPT Image 2</option>
-          <option value="nano-banana">Nano Banana</option>
-        </select>
+        <ModelPicker category="image" value={model} onChange={setModel} />
         <select value={size} onChange={(e) => setSize(e.target.value)}
           className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
           {SIZES.map((s) => <option key={s}>{s}</option>)}

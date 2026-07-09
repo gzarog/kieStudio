@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { streamChat } from "../lib/kieClient";
 import { hasApiKey } from "../lib/apiKey";
 import { requestKey, toast } from "../lib/ui";
-import type { ChatMessage, LLMModel } from "../lib/types";
+import { ModelPicker } from "../components/shared/ModelPicker";
+import { defaultModel } from "../lib/types";
+import type { ChatMessage } from "../lib/types";
 
-const MODELS: LLMModel[] = ["claude-sonnet-4-6", "gpt-4o", "gemini-2.5-pro"];
 const STORE_KEY = "kie_chat_history";
 
 function loadHistory(): ChatMessage[] {
@@ -19,7 +20,7 @@ function loadHistory(): ChatMessage[] {
 export function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>(loadHistory);
   const [input, setInput] = useState("");
-  const [model, setModel] = useState<LLMModel>("claude-sonnet-4-6");
+  const [model, setModel] = useState<string>(defaultModel("chat"));
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -119,10 +120,9 @@ export function ChatPage() {
         {messages.length > 0 && (
           <button onClick={clearChat} className="text-gray-400 hover:text-white text-xs">Clear</button>
         )}
-        <select value={model} onChange={(e) => setModel(e.target.value as LLMModel)}
-          className="ml-auto bg-surface border border-edge text-white text-sm rounded-lg px-3 py-1.5">
-          {MODELS.map((m) => <option key={m}>{m}</option>)}
-        </select>
+        <div className="ml-auto">
+          <ModelPicker category="chat" value={model} onChange={setModel} />
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4 space-y-3">
