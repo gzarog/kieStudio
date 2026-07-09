@@ -32,12 +32,15 @@ interface ModelPickerProps {
   onChange: (id: string) => void;
   /** Restrict the options to models advertising this capability. */
   capability?: Capability;
+  /** Restrict to models that accept an uploaded source image (i2i/i2v/edit). */
+  requireImage?: boolean;
   className?: string;
 }
 
 /** Catalog-driven model select: options grouped by provider, capability badges below. */
-export function ModelPicker({ category, value, onChange, capability, className }: ModelPickerProps) {
-  const models = catalogByCategory(category, capability);
+export function ModelPicker({ category, value, onChange, capability, requireImage, className }: ModelPickerProps) {
+  let models = catalogByCategory(category, capability);
+  if (requireImage) models = models.filter((m) => m.imageField);
   const selected = catalogModel(value);
 
   return (

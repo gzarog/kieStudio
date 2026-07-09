@@ -5,6 +5,11 @@ import { setApiKey, clearApiKey } from "../../src/lib/apiKey";
 import * as ui from "../../src/lib/ui";
 import { fetchResponse } from "../helpers";
 
+// FileReader never fires under fake timers — stub the upload helper instead.
+// (Resolved value is set per-test: the global afterEach restores all mocks.)
+vi.mock("../../src/lib/upload", () => ({ uploadFile: vi.fn() }));
+import { uploadFile } from "../../src/lib/upload";
+
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
@@ -46,6 +51,46 @@ describe("<VideoPage /> integration", () => {
     expect(video).toHaveAttribute("src", "http://v/1.mp4");
     // The history caption echoes the prompt used for this generation.
     expect(container.querySelector("p.truncate")?.textContent).toContain("drone over santorini");
+  });
+
+  it("Image-to-Video mode: uploads, then submits the model's image field + string duration", async () => {
+    setApiKey("k");
+    vi.mocked(uploadFile).mockResolvedValue({ fileUrl: "https://host/frame.png" });
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).endsWith("/api/upload"))
+        return Promise.resolve(fetchResponse({ fileUrl: "https://host/frame.png" }));
+      return Promise.resolve(fetchResponse({ taskId: "V9" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<VideoPage />);
+    fireEvent.click(screen.getByRole("button", { name: /Image to Video/i }));
+
+    const file = new File(["x"], "frame.png", { type: "image/png" });
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    type(screen.getByRole("textbox"), "waves start rolling");
+    await clickGenerate();
+    await tick(0);
+
+    const postCall = fetchMock.mock.calls.find(
+      (c) => String(c[0]).endsWith("/api/video") && (c[1] as RequestInit)?.method === "POST"
+    );
+    const body = JSON.parse((postCall![1] as RequestInit).body as string);
+    // Default i2v model is the first image-capable video model (Veo 3.1 → imageUrls).
+    expect(body.model).toBe("veo-3.1");
+    expect(body.input).toEqual({ duration: "5", imageUrls: ["https://host/frame.png"] });
+  });
+
+  it("Image-to-Video mode: Generate stays disabled until an image is uploaded", () => {
+    setApiKey("k");
+    render(<VideoPage />);
+    fireEvent.click(screen.getByRole("button", { name: /Image to Video/i }));
+    type(screen.getByRole("textbox"), "some motion");
+    expect(screen.getByRole("button", { name: /Generate/i })).toBeDisabled();
   });
 
   it("sends the selected model, resolution and duration", async () => {

@@ -5,16 +5,24 @@ import { requestKey, toast } from "../lib/ui";
 import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import { ModelPicker } from "../components/shared/ModelPicker";
-import { defaultModel } from "../lib/types";
+import { FileDrop } from "../components/shared/FileDrop";
+import { uploadFile } from "../lib/upload";
+import { defaultModel, imageCapableModels, imageInputFor, catalogModel } from "../lib/types";
 
 const SIZES = ["512x512", "1024x1024", "2048x2048"];
+
+type Mode = "create" | "edit";
 
 interface ImageItem { imageUrl: string; prompt: string }
 
 export function ImagePage() {
+  const [mode, setMode] = useState<Mode>("create");
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState<string>(defaultModel("image"));
+  const [editModel, setEditModel] = useState<string>(imageCapableModels("image")[0]?.id ?? "");
   const [size, setSize] = useState("1024x1024");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [history, setHistory] = useState<ImageItem[]>([]);
   const lastPrompt = useRef("");
   const { status, result, error, startPolling } = useTaskPoller<{ imageUrl: string }>("/image");
@@ -26,28 +34,75 @@ export function ImagePage() {
     }
   }, [status, result]);
 
+  async function handleFile(file: File) {
+    if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
+    setUploading(true);
+    try {
+      const { fileUrl } = await uploadFile(file);
+      setSourceUrl(fileUrl);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), "error");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const isEdit = mode === "edit";
+  const activeModel = isEdit ? editModel : model;
+  const promptOptional = isEdit && !!catalogModel(editModel)?.promptOptional;
+  const canGenerate = isEdit
+    ? !!sourceUrl && (promptOptional || !!prompt.trim())
+    : !!prompt.trim();
+
   async function generate() {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
     lastPrompt.current = prompt;
     try {
-      const { taskId } = await postToWorker<{ taskId: string }>("/image", { prompt, model, size });
-      startPolling(taskId, { model });
+      const body = isEdit
+        ? { prompt, model: editModel, input: imageInputFor(editModel, sourceUrl) }
+        : { prompt, model, size };
+      const { taskId } = await postToWorker<{ taskId: string }>("/image", body);
+      startPolling(taskId, { model: activeModel });
     } catch (e) { toast(e instanceof Error ? e.message : String(e), "error"); }
   }
+
+  const tabClass = (active: boolean) =>
+    `px-4 py-1.5 rounded-lg text-sm font-medium ${
+      active ? "bg-sky-600 text-white" : "bg-surface border border-edge text-gray-300"
+    }`;
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-4">
       <h1 className="text-white text-xl font-semibold">🖼️ Image</h1>
+
+      <div className="flex gap-2">
+        <button className={tabClass(!isEdit)} onClick={() => setMode("create")}>Create</button>
+        <button className={tabClass(isEdit)} onClick={() => setMode("edit")}>Edit / Remix</button>
+      </div>
+
+      {isEdit && (
+        <FileDrop onFile={handleFile} previewUrl={sourceUrl} uploading={uploading} />
+      )}
+
       <textarea rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Sunset over the Aegean, oil painting, cinematic…"
+        placeholder={isEdit
+          ? "Describe the edit — e.g. replace the sky with a thunderstorm…"
+          : "Sunset over the Aegean, oil painting, cinematic…"}
         className="w-full bg-surface border border-edge text-white rounded-xl p-3 text-sm font-mono outline-none focus:border-sky-500" />
+
       <div className="flex items-center gap-4">
-        <ModelPicker category="image" capability="t2i" value={model} onChange={setModel} />
-        <select value={size} onChange={(e) => setSize(e.target.value)}
-          className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
-          {SIZES.map((s) => <option key={s}>{s}</option>)}
-        </select>
-        <button onClick={generate} disabled={!prompt.trim() || status === "pending"}
+        {isEdit ? (
+          <ModelPicker category="image" requireImage value={editModel} onChange={setEditModel} />
+        ) : (
+          <>
+            <ModelPicker category="image" capability="t2i" value={model} onChange={setModel} />
+            <select value={size} onChange={(e) => setSize(e.target.value)}
+              className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
+              {SIZES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </>
+        )}
+        <button onClick={generate} disabled={!canGenerate || status === "pending" || uploading}
           className="ml-auto px-5 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-xl text-sm font-medium">
           Generate
         </button>

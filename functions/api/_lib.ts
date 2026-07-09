@@ -77,6 +77,32 @@ export function parseJobResult(resultJson?: string | null): { resultUrls: string
   }
 }
 
+// ── File Upload API ──────────────────────────────────────────────────────────
+//
+// Separate base host (docs.kie.ai/file-upload-api/quickstart). Same Bearer key.
+// We proxy the base64 variant (JSON in, JSON out — no multipart parsing in the
+// Worker). Uploaded files get a hosted URL usable as i2i/i2v `input` fields.
+
+export const UPLOAD_BASE = "https://kieai.redpandaai.co";
+export const UPLOAD_BASE64 = "/api/file-base64-upload";
+
+/** Forward a base64 data-URL upload to the File Upload API. Returns raw Response. */
+export function uploadBase64(
+  key: string,
+  base64Data: string,
+  fileName?: string,
+  uploadPath?: string
+) {
+  const body: Record<string, unknown> = { base64Data };
+  if (fileName) body.fileName = fileName;
+  if (uploadPath) body.uploadPath = uploadPath;
+  return fetch(`${UPLOAD_BASE}${UPLOAD_BASE64}`, {
+    method: "POST",
+    headers: kieHeaders(key),
+    body: JSON.stringify(body),
+  });
+}
+
 // ── Auth / headers ───────────────────────────────────────────────────────────
 
 export function userKey(request: Request): string | null {

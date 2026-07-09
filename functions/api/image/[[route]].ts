@@ -16,9 +16,11 @@ export const onRequestPost: PagesFunction = (ctx) =>
     const b = await ctx.request.json<{
       prompt: string; model: string; input?: Record<string, unknown>;
     }>();
-    if (!b.prompt?.trim()) return badRequest("Prompt is required.");
+    // Prompt-optional models (e.g. background removal) may send only `input`.
+    if (!b.prompt?.trim() && !Object.keys(b.input ?? {}).length)
+      return badRequest("Prompt is required.");
 
-    const input = { prompt: b.prompt, ...(b.input ?? {}) };
+    const input = { ...(b.prompt?.trim() ? { prompt: b.prompt } : {}), ...(b.input ?? {}) };
     const res = await createJob(key, jobsModelId(b.model), input);
     if (!res.ok) return json({ error: await res.text() }, res.status);
     const data = await res.json<{ data: { taskId: string } }>();

@@ -5,6 +5,8 @@ import {
   catalogModel,
   groupByProvider,
   defaultModel,
+  imageCapableModels,
+  imageInputFor,
 } from "../../src/lib/types";
 
 describe("model catalog", () => {
@@ -62,6 +64,30 @@ describe("model catalog", () => {
     expect(providers[0]).toBe("Google"); // Veo 3.1 is first video entry
     const google = groups.find(([p]) => p === "Google")?.[1] ?? [];
     expect(google.map((m) => m.id)).toContain("gemini-omni-video");
+  });
+
+  it("imageCapableModels returns only models with a verified imageField", () => {
+    const image = imageCapableModels("image");
+    expect(image.length).toBeGreaterThan(0);
+    expect(image.every((m) => m.imageField)).toBe(true);
+    // Ideogram v3-edit needs a mask_url too — no simple imageField, so excluded.
+    expect(image.find((m) => m.id === "ideogram/v3-edit")).toBeUndefined();
+    const video = imageCapableModels("video");
+    expect(video.map((m) => m.id)).toContain("kling-2.6/image-to-video");
+  });
+
+  it("imageInputFor uses the verified per-model field name and shape", () => {
+    // array-shaped fields
+    expect(imageInputFor("google/nano-banana-edit", "u")).toEqual({ image_urls: ["u"] });
+    expect(imageInputFor("nano-banana", "u")).toEqual({ image_input: ["u"] });
+    expect(imageInputFor("flux-2/pro-image-to-image", "u")).toEqual({ input_urls: ["u"] });
+    expect(imageInputFor("veo-3.1", "u")).toEqual({ imageUrls: ["u"] });
+    // single-string fields
+    expect(imageInputFor("qwen2/image-edit", "u")).toEqual({ image_url: "u" });
+    expect(imageInputFor("recraft/remove-background", "u")).toEqual({ image: "u" });
+    expect(imageInputFor("wan/2-5-image-to-video", "u")).toEqual({ image_url: "u" });
+    // unknown model → no image fragment
+    expect(imageInputFor("nope", "u")).toEqual({});
   });
 
   it("keeps Veo and the chat/Suno models on dedicated routers", () => {
