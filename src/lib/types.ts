@@ -5,6 +5,11 @@ export interface ChatMessage { role: "user" | "assistant"; content: string }
 export interface Track {
   id: string; audioUrl: string; imageUrl: string;
   title: string; tags: string; duration: number;
+  /** The generation taskId this track came from — required by the studio actions
+   *  (stems / WAV / timestamped lyrics all take { taskId, audioId }). */
+  taskId?: string;
+  /** Model that produced the track — Extend must use the same model. */
+  model?: string;
 }
 
 // ── Model catalog ────────────────────────────────────────────────────────────

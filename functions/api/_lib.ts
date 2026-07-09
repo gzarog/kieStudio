@@ -161,23 +161,32 @@ export type NormalizedStatus = "pending" | "success" | "failed";
 /**
  * Map kie.ai's varied status shapes to our 3-state contract.
  * Handles the Jobs API `state` (lowercase: waiting|queuing|generating|success|fail),
- * the dedicated routers' `status` (SUCCESS|FAILED|GENERATING), and the Veo-style
- * `successFlag` (1 = success, 2/3 = failed, 0 = pending).
+ * the dedicated routers' `status` (SUCCESS | PENDING | TEXT_SUCCESS | FIRST_SUCCESS |
+ * CREATE_TASK_FAILED | GENERATE_*_FAILED | SENSITIVE_WORD_ERROR | CALLBACK_EXCEPTION),
+ * the Suno wav/vocal-removal `successFlag` STRINGS of the same vocabulary, and the
+ * Veo-style numeric `successFlag` (1 = success, 2/3 = failed, 0 = pending).
  */
 export function normalizeStatus(data: {
   status?: string;
   state?: string;
   successFlag?: number | string;
 }): NormalizedStatus {
-  const raw = String(data.status ?? data.state ?? "").toUpperCase();
+  // Suno's wav/vocal-removal record-info reports the status vocabulary through a
+  // string `successFlag`; fold it into the same raw-status handling.
+  const flagStatus =
+    typeof data.successFlag === "string" && Number.isNaN(Number(data.successFlag))
+      ? data.successFlag
+      : undefined;
+  const raw = String(data.status ?? data.state ?? flagStatus ?? "").toUpperCase();
 
   if (raw === "SUCCESS" || raw === "COMPLETED" || raw === "SUCCEED") return "success";
   if (
     raw === "FAIL" ||
-    raw === "FAILED" ||
     raw === "ERROR" ||
-    raw.includes("ERROR") ||
-    raw === "CANCELED"
+    raw === "CANCELED" ||
+    raw.includes("FAILED") || // FAILED, CREATE_TASK_FAILED, GENERATE_AUDIO/WAV/LYRICS_FAILED
+    raw.includes("ERROR") || // SENSITIVE_WORD_ERROR, …
+    raw.includes("EXCEPTION") // CALLBACK_EXCEPTION (we never register callbacks)
   )
     return "failed";
 
@@ -188,5 +197,5 @@ export function normalizeStatus(data: {
     if (flag === 2 || flag === 3) return "failed";
   }
 
-  return "pending"; // waiting, queuing, generating, WAITING, PENDING, "", …
+  return "pending"; // waiting, queuing, generating, PENDING, TEXT_SUCCESS, FIRST_SUCCESS, "", …
 }
