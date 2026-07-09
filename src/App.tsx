@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import { BrowserRouter, Routes, Route, NavLink, useLocation } from "react-router-dom";
 import { ChatPage } from "./pages/ChatPage";
 import { ImagePage } from "./pages/ImagePage";
 import { MusicPage } from "./pages/MusicPage";
@@ -7,6 +7,7 @@ import { VideoPage } from "./pages/VideoPage";
 import { SpeechPage } from "./pages/SpeechPage";
 import { KeyModal } from "./components/shared/KeyModal";
 import { Toaster } from "./components/shared/Toaster";
+import { SessionSidebar } from "./components/shared/SessionSidebar";
 import { hasApiKey } from "./lib/apiKey";
 import { subscribeKeyRequests } from "./lib/ui";
 import { subscribeCredits, refreshCredits } from "./lib/credits";
@@ -19,51 +20,60 @@ const NAV = [
   { path: "/speech", label: "Speech", icon: "🗣️" },
 ];
 
-export default function App() {
+function pageFromPath(pathname: string): string {
+  return pathname.replace(/^\//, "") || "chat";
+}
+
+function AppShell() {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [credits, setCreditsState] = useState<number | null>(null);
+  const location = useLocation();
+  const activePage = pageFromPath(location.pathname);
 
-  // First visit: prompt for key; returning visit: fetch credits for the header.
   useEffect(() => {
     if (!hasApiKey()) setShowKeyModal(true);
     else refreshCredits();
   }, []);
 
-  // Any page can ask the shell to open the key modal (e.g. an action with no key).
   useEffect(() => subscribeKeyRequests(() => setShowKeyModal(true)), []);
-
-  // Remaining-credits bus: updated on key validation and after each completed task.
   useEffect(() => subscribeCredits(setCreditsState), []);
 
   return (
-    <BrowserRouter>
-      <div className="flex h-screen bg-base text-white font-sans">
-        {/* Sidebar (desktop) */}
-        <nav className="hidden md:flex w-52 bg-surface/50 border-r border-edge flex-col p-3 gap-1">
-          <p className="text-sky-400 font-bold px-3 py-3 text-lg tracking-tight">KIE Studio</p>
-          {credits !== null && (
-            <p data-testid="credits-badge"
-              className="mx-3 mb-1 px-2 py-1 rounded-lg bg-white/5 text-gray-300 text-xs font-medium">
-              ⚡ {credits} credits
-            </p>
-          )}
+    <div className="flex flex-col h-screen bg-base text-white font-sans">
+      {/* Top bar */}
+      <header className="flex items-center gap-1 px-4 py-2 bg-surface/80 border-b border-edge shrink-0">
+        <span className="text-sky-400 font-bold text-lg tracking-tight mr-4 hidden sm:block">KIE Studio</span>
+        <nav className="flex items-center gap-1 overflow-x-auto">
           {NAV.map(({ path, label, icon }) => (
             <NavLink key={path} to={path} end
               className={({ isActive }) =>
-                `px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                `px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                   isActive ? "bg-sky-600 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
                 }`}>
-              {icon} {label}
+              <span className="hidden sm:inline">{icon} </span>{label}
             </NavLink>
           ))}
-          <button onClick={() => setShowKeyModal(true)}
-            className="mt-auto px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 text-left">
-            ⚙️ API Key
-          </button>
         </nav>
+        <div className="ml-auto flex items-center gap-3">
+          {credits !== null && (
+            <span data-testid="credits-badge"
+              className="px-2 py-1 rounded-lg bg-white/5 text-gray-300 text-xs font-medium whitespace-nowrap">
+              ⚡ {credits} credits
+            </span>
+          )}
+          <button onClick={() => setShowKeyModal(true)}
+            className="px-2 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5">
+            ⚙️<span className="hidden sm:inline"> Key</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 min-h-0">
+        {/* Session sidebar (desktop) */}
+        <SessionSidebar page={activePage} />
 
         {/* Main */}
-        <main className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
+        <main className="flex-1 flex flex-col min-w-0 overflow-auto pb-16 md:pb-0">
           <Routes>
             <Route path="/" element={<ChatPage />} />
             <Route path="/image" element={<ImagePage />} />
@@ -72,26 +82,31 @@ export default function App() {
             <Route path="/speech" element={<SpeechPage />} />
           </Routes>
         </main>
-
-        {/* Bottom tab bar (mobile) */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 bg-surface border-t border-edge flex justify-around py-2 z-40">
-          {NAV.map(({ path, icon, label }) => (
-            <NavLink key={path} to={path} end
-              className={({ isActive }) =>
-                `flex flex-col items-center text-xs px-3 py-1 rounded-lg ${
-                  isActive ? "text-sky-400" : "text-gray-400"
-                }`}>
-              <span className="text-lg">{icon}</span>{label}
-            </NavLink>
-          ))}
-          <button onClick={() => setShowKeyModal(true)} className="flex flex-col items-center text-xs px-3 py-1 text-gray-400">
-            <span className="text-lg">⚙️</span>Key
-          </button>
-        </nav>
-
-        {showKeyModal && <KeyModal onClose={() => setShowKeyModal(false)} />}
-        <Toaster />
       </div>
+
+      {/* Bottom tab bar (mobile) */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-surface border-t border-edge flex justify-around py-2 z-40">
+        {NAV.map(({ path, icon, label }) => (
+          <NavLink key={path} to={path} end
+            className={({ isActive }) =>
+              `flex flex-col items-center text-xs px-3 py-1 rounded-lg ${
+                isActive ? "text-sky-400" : "text-gray-400"
+              }`}>
+            <span className="text-lg">{icon}</span>{label}
+          </NavLink>
+        ))}
+      </nav>
+
+      {showKeyModal && <KeyModal onClose={() => setShowKeyModal(false)} />}
+      <Toaster />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
     </BrowserRouter>
   );
 }
