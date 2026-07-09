@@ -5,6 +5,8 @@ import { requestKey, toast } from "../lib/ui";
 import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import { ModelPicker } from "../components/shared/ModelPicker";
+import { ExpiryBadge } from "../components/shared/ExpiryBadge";
+import { loadHistory, saveHistory } from "../lib/history";
 import { defaultModel } from "../lib/types";
 
 // Verified per-model defaults: Turbo 2.5 documents a voice ID default (James),
@@ -16,22 +18,28 @@ const VOICE_DEFAULTS: Record<string, string> = {
 
 const SPEEDS = [0.8, 0.9, 1, 1.1, 1.2];
 
-interface SpeechItem { audioUrl: string; text: string }
+interface SpeechItem { audioUrl: string; text: string; createdAt?: number }
 
 export function SpeechPage() {
   const [text, setText] = useState("");
   const [model, setModel] = useState<string>(defaultModel("speech"));
   const [voice, setVoice] = useState<string>(VOICE_DEFAULTS[defaultModel("speech")] ?? "");
   const [speed, setSpeed] = useState(1);
-  const [history, setHistory] = useState<SpeechItem[]>([]);
+  const [history, setHistory] = useState<SpeechItem[]>(() => loadHistory<SpeechItem>("speech"));
   const lastText = useRef("");
   const { status, result, error, startPolling } = useTaskPoller<{ resultUrls: string[] }>("/jobs/status");
 
   useEffect(() => {
     if (status === "success" && result?.resultUrls?.[0]) {
-      setHistory((h) => [{ audioUrl: result.resultUrls[0], text: lastText.current }, ...h]);
+      setHistory((h) => [
+        { audioUrl: result.resultUrls[0], text: lastText.current, createdAt: Date.now() },
+        ...h,
+      ]);
     }
   }, [status, result]);
+
+  // Persist history across sessions (localStorage — BYOK, nothing server-side).
+  useEffect(() => saveHistory("speech", history), [history]);
 
   function pickModel(id: string) {
     setModel(id);
@@ -75,9 +83,10 @@ export function SpeechPage() {
         <div key={i} className="bg-surface border border-edge rounded-2xl p-4 space-y-2">
           <p className="text-gray-400 text-xs truncate">{item.text}</p>
           <audio controls src={item.audioUrl} className="w-full h-9" />
-          <a href={item.audioUrl} download className="text-sky-400 text-xs underline">
-            Download audio (link expires in 14 days)
-          </a>
+          <div className="flex items-center gap-2">
+            <a href={item.audioUrl} download className="text-sky-400 text-xs underline">Download audio</a>
+            <ExpiryBadge createdAt={item.createdAt} />
+          </div>
         </div>
       ))}
     </div>

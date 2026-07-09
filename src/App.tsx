@@ -9,6 +9,7 @@ import { KeyModal } from "./components/shared/KeyModal";
 import { Toaster } from "./components/shared/Toaster";
 import { hasApiKey } from "./lib/apiKey";
 import { subscribeKeyRequests } from "./lib/ui";
+import { subscribeCredits, refreshCredits } from "./lib/credits";
 
 const NAV = [
   { path: "/", label: "Chat", icon: "💬" },
@@ -20,12 +21,19 @@ const NAV = [
 
 export default function App() {
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [credits, setCreditsState] = useState<number | null>(null);
 
-  // First visit: prompt for key
-  useEffect(() => { if (!hasApiKey()) setShowKeyModal(true); }, []);
+  // First visit: prompt for key; returning visit: fetch credits for the header.
+  useEffect(() => {
+    if (!hasApiKey()) setShowKeyModal(true);
+    else refreshCredits();
+  }, []);
 
   // Any page can ask the shell to open the key modal (e.g. an action with no key).
   useEffect(() => subscribeKeyRequests(() => setShowKeyModal(true)), []);
+
+  // Remaining-credits bus: updated on key validation and after each completed task.
+  useEffect(() => subscribeCredits(setCreditsState), []);
 
   return (
     <BrowserRouter>
@@ -33,6 +41,12 @@ export default function App() {
         {/* Sidebar (desktop) */}
         <nav className="hidden md:flex w-52 bg-surface/50 border-r border-edge flex-col p-3 gap-1">
           <p className="text-sky-400 font-bold px-3 py-3 text-lg tracking-tight">KIE Studio</p>
+          {credits !== null && (
+            <p data-testid="credits-badge"
+              className="mx-3 mb-1 px-2 py-1 rounded-lg bg-white/5 text-gray-300 text-xs font-medium">
+              ⚡ {credits} credits
+            </p>
+          )}
           {NAV.map(({ path, label, icon }) => (
             <NavLink key={path} to={path} end
               className={({ isActive }) =>

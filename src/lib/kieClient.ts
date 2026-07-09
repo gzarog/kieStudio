@@ -5,6 +5,18 @@ const headers = () => ({
   "X-KIE-Key": getApiKey(),
 });
 
+/**
+ * kie.ai allows 20 new generation requests / 10s per account; a 429 means the
+ * request was REJECTED (not queued). Callers can catch this type to back off
+ * and retry instead of failing the task (see useTaskPoller).
+ */
+export class RateLimitError extends Error {
+  constructor(message = "Rate limited by kie.ai (20 requests / 10s) — retrying shortly.") {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
 /** Pull a human-readable message out of a worker/kie.ai error response. */
 async function errorMessage(res: Response): Promise<string> {
   const text = await res.text();
@@ -16,15 +28,20 @@ async function errorMessage(res: Response): Promise<string> {
   }
 }
 
+async function throwFor(res: Response): Promise<never> {
+  if (res.status === 429) throw new RateLimitError();
+  throw new Error(await errorMessage(res));
+}
+
 export async function postToWorker<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, { method: "POST", headers: headers(), body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(await errorMessage(res));
+  if (!res.ok) await throwFor(res);
   return res.json();
 }
 
 export async function getFromWorker<T>(path: string): Promise<T> {
   const res = await fetch(`/api${path}`, { headers: headers() });
-  if (!res.ok) throw new Error(await errorMessage(res));
+  if (!res.ok) await throwFor(res);
   return res.json();
 }
 

@@ -6,6 +6,8 @@ import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import { ModelPicker } from "../components/shared/ModelPicker";
 import { FileDrop } from "../components/shared/FileDrop";
+import { ExpiryBadge } from "../components/shared/ExpiryBadge";
+import { loadHistory, saveHistory } from "../lib/history";
 import { uploadFile } from "../lib/upload";
 import { defaultModel, imageCapableModels, imageInputFor, catalogModel } from "../lib/types";
 
@@ -13,7 +15,7 @@ const SIZES = ["512x512", "1024x1024", "2048x2048"];
 
 type Mode = "create" | "edit";
 
-interface ImageItem { imageUrl: string; prompt: string }
+interface ImageItem { imageUrl: string; prompt: string; createdAt?: number }
 
 export function ImagePage() {
   const [mode, setMode] = useState<Mode>("create");
@@ -23,16 +25,22 @@ export function ImagePage() {
   const [size, setSize] = useState("1024x1024");
   const [sourceUrl, setSourceUrl] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [history, setHistory] = useState<ImageItem[]>([]);
+  const [history, setHistory] = useState<ImageItem[]>(() => loadHistory<ImageItem>("image"));
   const lastPrompt = useRef("");
   const { status, result, error, startPolling } = useTaskPoller<{ imageUrl: string }>("/image");
 
   // Push each completed generation onto the history list (newest first).
   useEffect(() => {
     if (status === "success" && result?.imageUrl) {
-      setHistory((h) => [{ imageUrl: result.imageUrl, prompt: lastPrompt.current }, ...h]);
+      setHistory((h) => [
+        { imageUrl: result.imageUrl, prompt: lastPrompt.current, createdAt: Date.now() },
+        ...h,
+      ]);
     }
   }, [status, result]);
+
+  // Persist history across sessions (localStorage — BYOK, nothing server-side).
+  useEffect(() => saveHistory("image", history), [history]);
 
   async function handleFile(file: File) {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
@@ -115,7 +123,10 @@ export function ImagePage() {
             <div key={i} className="space-y-2">
               <img src={item.imageUrl} alt={item.prompt} className="rounded-2xl border border-edge w-full" />
               {item.prompt && <p className="text-gray-400 text-xs truncate">{item.prompt}</p>}
-              <a href={item.imageUrl} download className="text-sky-400 text-xs underline">Download (link expires in 14 days)</a>
+              <div className="flex items-center gap-2">
+                <a href={item.imageUrl} download className="text-sky-400 text-xs underline">Download</a>
+                <ExpiryBadge createdAt={item.createdAt} />
+              </div>
             </div>
           ))}
         </div>

@@ -15,8 +15,13 @@ export const onRequestGet: PagesFunction = (ctx) =>
     try {
       const res = await fetch(`${KIE_BASE}/chat/credit`, { headers: kieHeaders(key) });
       if (res.ok) {
-        const data = await res.json<{ data?: { credits?: number; remainingCredits?: number } }>();
-        const credits = data.data?.remainingCredits ?? data.data?.credits;
+        // Verified Common API shape: GET /chat/credit → { code, msg, data: <number> }.
+        // Tolerate older object shapes too.
+        const data = await res.json<{
+          data?: number | { credits?: number; remainingCredits?: number };
+        }>();
+        const d = data.data;
+        const credits = typeof d === "number" ? d : d?.remainingCredits ?? d?.credits;
         return json({ valid: true, credits });
       }
       // 401/403 → key is definitively bad; don't bother with the fallback.

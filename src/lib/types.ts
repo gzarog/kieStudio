@@ -10,6 +10,8 @@ export interface Track {
   taskId?: string;
   /** Model that produced the track — Extend must use the same model. */
   model?: string;
+  /** When the track landed in history — drives the 14-day expiry badge. */
+  createdAt?: number;
 }
 
 // ── Model catalog ────────────────────────────────────────────────────────────
