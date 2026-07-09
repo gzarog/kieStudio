@@ -108,6 +108,10 @@ export function ChatPage() {
       }
       // Handle any bytes/line left buffered when the stream ends.
       flush(decoder.decode() + "\n");
+
+      if (!assistant) {
+        setMessages([...next, { role: "assistant", content: "⚠️ No response received — the model returned an empty reply." }]);
+      }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
         // User pressed Stop — keep whatever streamed so far.
