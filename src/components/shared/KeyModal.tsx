@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getApiKey, setApiKey, clearApiKey } from "../../lib/apiKey";
 import { validateKey } from "../../lib/kieClient";
 import { toast } from "../../lib/ui";
+import { setCredits } from "../../lib/credits";
 
 type Check =
   | { state: "idle" }
@@ -21,6 +22,8 @@ export function KeyModal({ onClose }: { onClose: () => void }) {
     const { valid, credits } = await validateKey();
     if (valid) {
       setCheck({ state: "ok", credits });
+      if (typeof credits === "number") setCredits(credits); // header badge
+
       toast(
         credits !== undefined ? `Key saved — ${credits} credits remaining` : "Key saved & verified",
         "success"

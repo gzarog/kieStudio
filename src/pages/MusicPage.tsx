@@ -6,6 +6,8 @@ import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import { ModelPicker } from "../components/shared/ModelPicker";
 import { TrackActions } from "../components/music/TrackActions";
+import { ExpiryBadge } from "../components/shared/ExpiryBadge";
+import { loadHistory, saveHistory } from "../lib/history";
 import { defaultModel } from "../lib/types";
 import type { Track } from "../lib/types";
 
@@ -13,7 +15,7 @@ export function MusicPage() {
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState<string>(defaultModel("music"));
   const [instrumental, setInstrumental] = useState(false);
-  const [history, setHistory] = useState<Track[]>([]);
+  const [history, setHistory] = useState<Track[]>(() => loadHistory<Track>("music"));
   const lastTask = useRef<{ taskId: string; model: string } | null>(null);
   const { status, result, error, startPolling } = useTaskPoller<Track[]>("/music");
 
@@ -21,10 +23,13 @@ export function MusicPage() {
   // tagging each track with the generation taskId + model the studio actions need.
   useEffect(() => {
     if (status === "success" && result?.length) {
-      const tagged = result.map((t) => ({ ...t, ...lastTask.current }));
+      const tagged = result.map((t) => ({ ...t, ...lastTask.current, createdAt: Date.now() }));
       setHistory((h) => [...tagged, ...h]);
     }
   }, [status, result]);
+
+  // Persist history across sessions (localStorage — BYOK, nothing server-side).
+  useEffect(() => saveHistory("music", history), [history]);
 
   async function generate() {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
@@ -61,8 +66,11 @@ export function MusicPage() {
             <p className="text-white font-medium truncate">{t.title}</p>
             <p className="text-gray-400 text-xs truncate">{t.tags}</p>
             <audio controls src={t.audioUrl} className="w-full h-9" />
-            <a href={t.audioUrl} download className="text-sky-400 text-xs underline">Download MP3 (link expires in 14 days)</a>
-            <TrackActions track={t} onExtended={(tracks) => setHistory((h) => [...tracks, ...h])} />
+            <div className="flex items-center gap-2">
+              <a href={t.audioUrl} download className="text-sky-400 text-xs underline">Download MP3</a>
+              <ExpiryBadge createdAt={t.createdAt} />
+            </div>
+            <TrackActions track={t} onExtended={(tracks) => setHistory((h) => [...tracks.map((x) => ({ ...x, createdAt: Date.now() })), ...h])} />
           </div>
         </div>
       ))}

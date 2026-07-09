@@ -1,13 +1,40 @@
 # KIE Studio
 
-Global AI studio — chat, image, music, video — powered by kie.ai, deployed on Cloudflare Pages.
-**BYOK**: users bring their own kie.ai API key (stored in their browser only).
+Global AI studio — chat, image, music, video, speech — powered by kie.ai, deployed on
+Cloudflare Pages. **BYOK**: users bring their own kie.ai API key (stored in their browser only).
 
 - 💬 **Chat** — streaming LLM responses (Claude / GPT / Gemini), with stop, copy, and a
   conversation that survives a refresh.
-- 🖼️ **Image** — GPT Image 2 / Nano Banana, with a per-session history of results.
-- 🎵 **Music** — Suno V4.5 / V5.5, audio player + cover art.
-- 🎬 **Video** — Veo 3.1 / Kling 3.0 / Seedance.
+- 🖼️ **Image** — Create (GPT Image 2, Nano Banana Pro, Grok Imagine, Ideogram V3, Qwen2, …)
+  and **Edit / Remix** (Nano Banana Edit, Seedream 4.5 Edit, Flux-2 i2i, Qwen2 Edit,
+  Recraft background removal) with drag-and-drop image upload.
+- 🎵 **Music** — Suno V4.5 / V5.5 with per-track **studio actions**: Extend, vocal/stem
+  separation, WAV master conversion, timestamped lyrics (the Suno → stems → DAW →
+  distribution workflow).
+- 🎬 **Video** — Text-to-Video (Veo 3.1, Kling 3.0, Seedance 2.0, Hailuo, Wan, …) and
+  **Image-to-Video** (Veo 3.1, Kling 2.6, ByteDance, Hailuo 2.3, Wan 2.5) from an uploaded frame.
+- 🗣️ **Speech** — ElevenLabs TTS (Turbo 2.5, Multilingual V2) with voice + speed controls.
+
+Model pickers are driven by a **verified model catalog** (`src/lib/types.ts`): every
+identifier is copied verbatim from its docs.kie.ai page — including each model's exact
+image-input field name, which is *not* uniform across providers.
+
+### How generation works (async polling)
+
+Most models ride kie.ai's **Unified Jobs API**: submit `POST /api/v1/jobs/createTask`,
+then poll `GET /api/v1/jobs/recordInfo` until `state` reaches `success`/`fail` (the worker
+normalizes everything to `pending | success | failed`). Chat, Suno, and Veo keep dedicated
+routers. There are **no webhook callbacks** — BYOK has no server state to receive them.
+
+Uploads for image-to-image / image-to-video go through the **File Upload API**
+(`/api/upload` → `kieai.redpandaai.co`), which returns a hosted URL passed in the model's
+`input`. Uploaded files expire after ~3 days; generated media after **14 days** — every
+result card shows an "expires in N days" badge and a Download link. Download promptly.
+
+Your remaining credits show in the header after key validation and refresh after each
+completed task. Hitting the rate limit (20 requests / 10s, HTTP 429 = rejected) toasts a
+notice and the poller backs off exponentially. Result history is persisted per page in
+`localStorage` (latest 50 entries).
 
 ## Get your key
 
@@ -96,10 +123,15 @@ npm run test:coverage # coverage report
 
 What's covered:
 
-- **Edge functions** (`functions/api/*`) — chat streaming pass-through, image/music/video
-  submit + poll routing, key validation, and the shared `_lib` helpers (per-model endpoint
-  routing, CORS, status normalization, error `guard`).
-- **Client lib** — the BYOK key store, `kieClient` request/error handling, the toast &
-  key-modal buses, and the `useTaskPoller` polling hook.
-- **UI** — `KeyModal`, `Toaster`, `TaskStatusBadge`, and each page (Chat, Image, Music,
-  Video) driven from prompt to rendered result.
+- **Edge functions** (`functions/api/*`) — chat streaming pass-through, the generic Jobs
+  proxy, image/music/video submit + poll routing, the file-upload proxy, the Suno studio
+  actions (extend / stems / WAV / lyrics), key validation (incl. numeric credits), and the
+  shared `_lib` helpers (CORS, status normalization across all documented vocabularies,
+  error `guard`).
+- **Client lib** — the BYOK key store, `kieClient` request/error handling (incl. the typed
+  429 `RateLimitError`), the upload helper, per-page history persistence + expiry math,
+  the credits bus, the toast & key-modal buses, and the `useTaskPoller` hook (incl.
+  exponential backoff on rate limits).
+- **UI** — `KeyModal`, `Toaster`, `TaskStatusBadge`, `FileDrop`, `ExpiryBadge`,
+  `TrackActions`, and each page (Chat, Image, Music, Video, Speech) driven from prompt to
+  rendered result.

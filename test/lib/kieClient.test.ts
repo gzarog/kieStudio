@@ -4,6 +4,7 @@ import {
   getFromWorker,
   streamChat,
   validateKey,
+  RateLimitError,
 } from "../../src/lib/kieClient";
 import { setApiKey } from "../../src/lib/apiKey";
 import { fetchResponse } from "../helpers";
@@ -45,6 +46,15 @@ describe("kieClient: postToWorker", () => {
       vi.fn().mockResolvedValue(fetchResponse("boom", { ok: false, status: 500, text: "boom" }))
     );
     await expect(postToWorker("/image", {})).rejects.toThrow("boom");
+  });
+
+  it("throws a typed RateLimitError on HTTP 429 (rejected, not queued)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(fetchResponse("slow down", { ok: false, status: 429, text: "slow down" }))
+    );
+    await expect(postToWorker("/image", {})).rejects.toBeInstanceOf(RateLimitError);
+    await expect(getFromWorker("/image?taskId=1")).rejects.toBeInstanceOf(RateLimitError);
   });
 });
 

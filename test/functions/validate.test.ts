@@ -24,6 +24,12 @@ describe("validate route", () => {
     expect(await (await validate()).json()).toEqual({ valid: true, credits: 7 });
   });
 
+  it("reads the verified Common API shape where data IS the number", async () => {
+    // GET /chat/credit → { code: 200, msg: "success", data: 100 }
+    mockFetchSequence(fetchResponse({ code: 200, msg: "success", data: 100 }));
+    expect(await (await validate()).json()).toEqual({ valid: true, credits: 100 });
+  });
+
   it("returns valid:false immediately on a 401 from credits (no fallback)", async () => {
     const fetchMock = mockFetchSequence(fetchResponse(null, { ok: false, status: 401 }));
     const res = await validate();

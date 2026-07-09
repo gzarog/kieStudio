@@ -13,10 +13,19 @@
 // Dedicated routers (kept separate — verified distinct contracts):
 //   Chat:  POST /chat/completions           (OpenAI-compatible SSE)
 //   Suno:  POST /generate + GET /generate/record-info
+//          extras: /generate/extend, /vocal-removal/*, /wav/*, /lyrics/*,
+//          /generate/get-timestamped-lyrics (see functions/api/suno)
 //   Veo:   POST /veo/generate + GET /veo/record-info   (successFlag/resultUrls shape)
+//
+// Common API:  GET /chat/credit → { code, msg, data: <number> }  (credits display)
+// File Upload: POST https://kieai.redpandaai.co/api/file-base64-upload  (separate host)
+//
+// Rate limit: 20 new generation requests / 10s per account; a 429 is REJECTED,
+// not queued (the client backs off and the UI debounces submits).
 //
 // BYOK invariant: the user key arrives as `X-KIE-Key`, is forwarded as
 // `Authorization: Bearer <key>`, and is never stored or logged server-side.
+// No webhook callbacks (no server state to receive them) — polling only.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const KIE_BASE = "https://api.kie.ai/api/v1";

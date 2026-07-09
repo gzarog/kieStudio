@@ -6,12 +6,14 @@ import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import { ModelPicker } from "../components/shared/ModelPicker";
 import { FileDrop } from "../components/shared/FileDrop";
+import { ExpiryBadge } from "../components/shared/ExpiryBadge";
+import { loadHistory, saveHistory } from "../lib/history";
 import { uploadFile } from "../lib/upload";
 import { defaultModel, imageCapableModels, imageInputFor } from "../lib/types";
 
 type Mode = "t2v" | "i2v";
 
-interface VideoItem { videoUrl: string; prompt: string }
+interface VideoItem { videoUrl: string; prompt: string; createdAt?: number }
 
 export function VideoPage() {
   const [mode, setMode] = useState<Mode>("t2v");
@@ -22,15 +24,21 @@ export function VideoPage() {
   const [duration, setDuration] = useState(5);
   const [sourceUrl, setSourceUrl] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [history, setHistory] = useState<VideoItem[]>([]);
+  const [history, setHistory] = useState<VideoItem[]>(() => loadHistory<VideoItem>("video"));
   const lastPrompt = useRef("");
   const { status, result, error, startPolling } = useTaskPoller<{ videoUrl: string }>("/video", 6000);
 
   useEffect(() => {
     if (status === "success" && result?.videoUrl) {
-      setHistory((h) => [{ videoUrl: result.videoUrl, prompt: lastPrompt.current }, ...h]);
+      setHistory((h) => [
+        { videoUrl: result.videoUrl, prompt: lastPrompt.current, createdAt: Date.now() },
+        ...h,
+      ]);
     }
   }, [status, result]);
+
+  // Persist history across sessions (localStorage — BYOK, nothing server-side).
+  useEffect(() => saveHistory("video", history), [history]);
 
   async function handleFile(file: File) {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
@@ -120,7 +128,10 @@ export function VideoPage() {
             <div key={i} className="space-y-2">
               <video controls src={item.videoUrl} className="rounded-2xl border border-edge w-full" />
               {item.prompt && <p className="text-gray-400 text-xs truncate">{item.prompt}</p>}
-              <a href={item.videoUrl} download className="text-sky-400 text-xs underline">Download (link expires in 14 days)</a>
+              <div className="flex items-center gap-2">
+                <a href={item.videoUrl} download className="text-sky-400 text-xs underline">Download</a>
+                <ExpiryBadge createdAt={item.createdAt} />
+              </div>
             </div>
           ))}
         </div>
