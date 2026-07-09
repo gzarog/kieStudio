@@ -2,8 +2,8 @@
 #
 #   docker compose up --build
 #
-# Then open http://localhost:8788 — chat, image, music and video all work once
-# you paste your kie.ai key into the 🔑 modal (it stays in your browser).
+# Then open http://localhost:8788 — chat, image, music, video and speech all
+# work once you paste your kie.ai key into the 🔑 modal (it stays in your browser).
 #
 # BYOK by design: there are no server-side secrets to configure here.
 services:
