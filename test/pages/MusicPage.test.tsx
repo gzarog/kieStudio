@@ -68,6 +68,7 @@ describe("<MusicPage /> integration", () => {
 
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.instrumental).toBe(true);
-    expect(body.model).toBe("V4_5");
+    // Phase 2: Suno V5.5 is the default (the owner's daily driver).
+    expect(body.model).toBe("V5_5");
   });
 });

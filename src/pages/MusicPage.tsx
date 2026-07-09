@@ -4,11 +4,13 @@ import { hasApiKey } from "../lib/apiKey";
 import { requestKey, toast } from "../lib/ui";
 import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
-import type { Track, SunoModel } from "../lib/types";
+import { ModelPicker } from "../components/shared/ModelPicker";
+import { defaultModel } from "../lib/types";
+import type { Track } from "../lib/types";
 
 export function MusicPage() {
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState<SunoModel>("V4_5");
+  const [model, setModel] = useState<string>(defaultModel("music"));
   const [instrumental, setInstrumental] = useState(false);
   const [history, setHistory] = useState<Track[]>([]);
   const { status, result, error, startPolling } = useTaskPoller<Track[]>("/music");
@@ -35,11 +37,7 @@ export function MusicPage() {
         placeholder="Upbeat Greek summer pop, male vocals, bouzouki riffs…"
         className="w-full bg-surface border border-edge text-white rounded-xl p-3 text-sm font-mono outline-none focus:border-sky-500" />
       <div className="flex items-center gap-4">
-        <select value={model} onChange={(e) => setModel(e.target.value as SunoModel)}
-          className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
-          <option value="V4_5">Suno V4.5</option>
-          <option value="V5_5">Suno V5.5</option>
-        </select>
+        <ModelPicker category="music" value={model} onChange={setModel} />
         <label className="flex items-center gap-2 text-gray-300 text-sm">
           <input type="checkbox" checked={instrumental} onChange={(e) => setInstrumental(e.target.checked)} />
           Instrumental

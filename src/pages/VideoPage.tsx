@@ -4,13 +4,14 @@ import { hasApiKey } from "../lib/apiKey";
 import { requestKey, toast } from "../lib/ui";
 import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
-import type { VideoModel } from "../lib/types";
+import { ModelPicker } from "../components/shared/ModelPicker";
+import { defaultModel } from "../lib/types";
 
 interface VideoItem { videoUrl: string; prompt: string }
 
 export function VideoPage() {
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState<VideoModel>("veo-3.1");
+  const [model, setModel] = useState<string>(defaultModel("video"));
   const [resolution, setResolution] = useState("1080p");
   const [duration, setDuration] = useState(5);
   const [history, setHistory] = useState<VideoItem[]>([]);
@@ -39,12 +40,7 @@ export function VideoPage() {
         placeholder="Drone shot over Santorini at golden hour, cinematic motion…"
         className="w-full bg-surface border border-edge text-white rounded-xl p-3 text-sm font-mono outline-none focus:border-sky-500" />
       <div className="flex items-center gap-3 flex-wrap">
-        <select value={model} onChange={(e) => setModel(e.target.value as VideoModel)}
-          className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
-          <option value="veo-3.1">Veo 3.1</option>
-          <option value="kling-3.0">Kling 3.0</option>
-          <option value="seedance-2.0">Seedance 2.0</option>
-        </select>
+        <ModelPicker category="video" capability="t2v" value={model} onChange={setModel} />
         <select value={resolution} onChange={(e) => setResolution(e.target.value)}
           className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
           <option>720p</option><option>1080p</option>
