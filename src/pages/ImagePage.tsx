@@ -10,6 +10,7 @@ import { ExpiryBadge } from "../components/shared/ExpiryBadge";
 import { loadHistory, saveHistory } from "../lib/history";
 import { uploadFile } from "../lib/upload";
 import { defaultModel, imageCapableModels, imageInputFor, catalogModel } from "../lib/types";
+import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
 
 const SIZES = ["512x512", "1024x1024", "2048x2048"];
 
@@ -39,8 +40,13 @@ export function ImagePage() {
     }
   }, [status, result]);
 
-  // Persist history across sessions (localStorage — BYOK, nothing server-side).
   useEffect(() => saveHistory("image", history), [history]);
+
+  useEffect(() => {
+    const unsub1 = onNewSession(() => { setPrompt(""); setSourceUrl(""); });
+    const unsub2 = onDeleteEntry((i) => setHistory((h) => { const next = h.filter((_, idx) => idx !== i); saveHistory("image", next); return next; }));
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   async function handleFile(file: File) {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }

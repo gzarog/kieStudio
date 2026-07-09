@@ -9,6 +9,7 @@ import { TrackActions } from "../components/music/TrackActions";
 import { ExpiryBadge } from "../components/shared/ExpiryBadge";
 import { loadHistory, saveHistory } from "../lib/history";
 import { defaultModel } from "../lib/types";
+import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
 import type { Track } from "../lib/types";
 
 export function MusicPage() {
@@ -28,8 +29,13 @@ export function MusicPage() {
     }
   }, [status, result]);
 
-  // Persist history across sessions (localStorage — BYOK, nothing server-side).
   useEffect(() => saveHistory("music", history), [history]);
+
+  useEffect(() => {
+    const unsub1 = onNewSession(() => setPrompt(""));
+    const unsub2 = onDeleteEntry((i) => setHistory((h) => { const next = h.filter((_, idx) => idx !== i); saveHistory("music", next); return next; }));
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   async function generate() {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
