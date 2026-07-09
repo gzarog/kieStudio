@@ -1,8 +1,10 @@
-// Image generation via the Unified Jobs API. The friendly model key from the
-// frontend (e.g. "nano-banana", "gpt-image-2") is mapped to its verified Jobs
-// identifier in _lib. Any caller-supplied `input` fields are merged over the prompt.
+// Generic Unified Jobs API proxy. Adding any future Market model becomes a
+// frontend-only change: submit { model, input } and poll ?taskId=.
+//
+//   POST /api/jobs/submit  { model, input, callBackUrl? } → { taskId }
+//   GET  /api/jobs/status?taskId=<id>                     → { status, result, error }
 import {
-  userKey, noKey, badRequest, json, guard,
+  userKey, kieHeaders, noKey, badRequest, json, guard,
   createJob, jobStatus, jobsModelId, normalizeStatus, parseJobResult,
 } from "../_lib";
 
@@ -14,12 +16,14 @@ export const onRequestPost: PagesFunction = (ctx) =>
     if (!key) return noKey();
 
     const b = await ctx.request.json<{
-      prompt: string; model: string; input?: Record<string, unknown>;
+      model?: string;
+      input?: Record<string, unknown>;
+      callBackUrl?: string;
     }>();
-    if (!b.prompt?.trim()) return badRequest("Prompt is required.");
+    if (!b.model?.trim()) return badRequest("A model is required.");
+    if (!b.input || typeof b.input !== "object") return badRequest("An input object is required.");
 
-    const input = { prompt: b.prompt, ...(b.input ?? {}) };
-    const res = await createJob(key, jobsModelId(b.model), input);
+    const res = await createJob(key, jobsModelId(b.model), b.input, b.callBackUrl);
     if (!res.ok) return json({ error: await res.text() }, res.status);
     const data = await res.json<{ data: { taskId: string } }>();
     return json({ taskId: data.data.taskId });
@@ -35,13 +39,13 @@ export const onRequestGet: PagesFunction = (ctx) =>
 
     const res = await jobStatus(key, taskId);
     const data = await res.json<{
-      data: { state?: string; status?: string; failMsg?: string; resultJson?: string };
+      data: { state?: string; status?: string; failMsg?: string; failCode?: string; resultJson?: string };
     }>();
 
     const s = normalizeStatus(data.data);
     if (s === "success") {
       const { resultUrls } = parseJobResult(data.data.resultJson);
-      return json({ status: "success", result: { imageUrl: resultUrls[0], resultUrls } });
+      return json({ status: "success", result: { resultUrls } });
     }
     if (s === "failed")
       return json({ status: "failed", result: null, error: data.data.failMsg ?? "Generation failed" });
