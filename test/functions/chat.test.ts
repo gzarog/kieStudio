@@ -24,7 +24,10 @@ describe("chat route", () => {
   });
 
   it("streams the upstream body as SSE on success", async () => {
-    const upstream = new Response(streamOf("data: {}\n\n"), { status: 200 });
+    const upstream = new Response(streamOf("data: {}\n\n"), {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
     const fetchMock = mockFetchSequence(upstream);
 
     const res = await post({ model: "gpt-4o", messages: [{ role: "user", content: "hi" }] });
@@ -57,5 +60,19 @@ describe("chat route", () => {
     const res = await post({ model: "gpt-4o", messages: [{ role: "user", content: "hi" }] });
     expect(res.status).toBe(500);
     expect((await res.json()).error).toBe("network down");
+  });
+
+  it("detects a JSON error wrapped in HTTP 200 and returns the real status", async () => {
+    const body = JSON.stringify({ code: 401, msg: "Unauthorized" });
+    const upstream = new Response(body, {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+    mockFetchSequence(upstream);
+
+    const res = await post({ model: "gpt-4o", messages: [{ role: "user", content: "hi" }] });
+    expect(res.status).toBe(401);
+    expect(await res.text()).toContain("Unauthorized");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 });

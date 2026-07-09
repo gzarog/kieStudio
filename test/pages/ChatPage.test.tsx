@@ -98,4 +98,17 @@ describe("<ChatPage /> integration", () => {
     render(<ChatPage />);
     expect(screen.getByRole("button", { name: /Send/i })).toBeDisabled();
   });
+
+  it("shows a warning when the stream ends with no content", async () => {
+    setApiKey("k");
+    const user = userEvent.setup();
+    const empty = streamOf("data: [DONE]\n");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(empty, { status: 200 })));
+
+    render(<ChatPage />);
+    await user.type(screen.getByPlaceholderText(/Message/i), "hello");
+    await user.click(screen.getByRole("button", { name: /Send/i }));
+
+    await waitFor(() => expect(screen.getByText(/No response received/)).toBeInTheDocument());
+  });
 });

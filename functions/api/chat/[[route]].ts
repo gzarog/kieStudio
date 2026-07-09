@@ -22,6 +22,21 @@ export const onRequestPost: PagesFunction = (ctx) =>
       return withCors(new Response(await upstream.text(), { status: upstream.status }));
     }
 
+    // kie.ai sometimes wraps errors in HTTP 200 with a JSON body
+    // (e.g. {"code":401,"msg":"Unauthorized …"}). Detect this by
+    // checking Content-Type: a real SSE stream is text/event-stream,
+    // while an error payload arrives as application/json.
+    const ct = upstream.headers.get("Content-Type") ?? "";
+    if (!ct.includes("text/event-stream")) {
+      const text = await upstream.text();
+      let status = 502;
+      try {
+        const j = JSON.parse(text);
+        if (typeof j.code === "number" && j.code !== 200) status = j.code;
+      } catch { /* not JSON — use 502 */ }
+      return withCors(new Response(text, { status }));
+    }
+
     return withCors(
       new Response(upstream.body, {
         headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
