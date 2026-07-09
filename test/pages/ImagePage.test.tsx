@@ -5,6 +5,11 @@ import { setApiKey, clearApiKey } from "../../src/lib/apiKey";
 import * as ui from "../../src/lib/ui";
 import { fetchResponse } from "../helpers";
 
+// FileReader never fires under fake timers — stub the upload helper instead.
+// (Resolved value is set per-test: the global afterEach restores all mocks.)
+vi.mock("../../src/lib/upload", () => ({ uploadFile: vi.fn() }));
+import { uploadFile } from "../../src/lib/upload";
+
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
@@ -73,6 +78,48 @@ describe("<ImagePage /> integration", () => {
     await tick(0);
 
     expect(toast).toHaveBeenCalledWith("no credits", "error");
+  });
+
+  it("Edit mode: uploads the source image, then submits input with the model's image field", async () => {
+    setApiKey("k");
+    vi.mocked(uploadFile).mockResolvedValue({ fileUrl: "https://host/src.png" });
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).endsWith("/api/upload"))
+        return Promise.resolve(fetchResponse({ fileUrl: "https://host/src.png" }));
+      return Promise.resolve(fetchResponse({ taskId: "T9" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ImagePage />);
+    fireEvent.click(screen.getByRole("button", { name: /Edit \/ Remix/i }));
+
+    // Upload a source image through the drop zone.
+    const file = new File(["x"], "src.png", { type: "image/png" });
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    type(screen.getByRole("textbox"), "replace the sky");
+    await clickGenerate();
+    await tick(0);
+
+    const postCall = fetchMock.mock.calls.find(
+      (c) => String(c[0]).endsWith("/api/image") && (c[1] as RequestInit)?.method === "POST"
+    );
+    const body = JSON.parse((postCall![1] as RequestInit).body as string);
+    // Default edit model is the first image-capable model (Nano Banana Pro → image_input).
+    expect(body.model).toBe("nano-banana");
+    expect(body.input).toEqual({ image_input: ["https://host/src.png"] });
+    expect(body.prompt).toBe("replace the sky");
+  });
+
+  it("Edit mode: Generate stays disabled until a source image is uploaded", async () => {
+    setApiKey("k");
+    render(<ImagePage />);
+    fireEvent.click(screen.getByRole("button", { name: /Edit \/ Remix/i }));
+    type(screen.getByRole("textbox"), "some edit");
+    expect(screen.getByRole("button", { name: /Generate/i })).toBeDisabled();
   });
 
   it("lets the user switch the model before generating", async () => {
