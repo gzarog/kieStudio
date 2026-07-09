@@ -56,6 +56,14 @@ describe("model catalog", () => {
     expect(defaultModel("video")).toBe("veo-3.1");
     // Phase 2: Suno V5.5 is the music default.
     expect(defaultModel("music")).toBe("V5_5");
+    // Phase 5: ElevenLabs Turbo 2.5 is the speech default (Jobs API).
+    expect(defaultModel("speech")).toBe("elevenlabs/text-to-speech-turbo-2-5");
+  });
+
+  it("speech models ride the generic Jobs proxy (not dedicated)", () => {
+    const speech = catalogByCategory("speech");
+    expect(speech.length).toBe(2);
+    expect(speech.every((m) => !m.dedicated && m.capabilities.includes("tts"))).toBe(true);
   });
 
   it("groupByProvider preserves first-seen order and groups members", () => {
