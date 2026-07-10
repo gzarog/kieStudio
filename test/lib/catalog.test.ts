@@ -7,6 +7,8 @@ import {
   defaultModel,
   imageCapableModels,
   imageInputFor,
+  videoCapableModels,
+  videoInputFor,
 } from "../../src/lib/types";
 
 describe("model catalog", () => {
@@ -257,5 +259,58 @@ describe("Phase 2 — video catalog expansion", () => {
     expect(catalogByCategory("video")[0].id).toBe("veo-3.1");
     expect(defaultModel("video")).toBe("veo-3.1");
     expect(groupByProvider(catalogByCategory("video")).map(([p]) => p)[0]).toBe("Google");
+  });
+});
+
+describe("Phase 3 — video/audio-input catalog expansion", () => {
+  it("adds first_frame_url i2v models to the require-image picker with single-string shape", () => {
+    const i2v = imageCapableModels("video").map((m) => m.id);
+    for (const id of ["wan/2-7-image-to-video", "bytedance/seedance-2-fast", "bytedance/seedance-2-mini"]) {
+      expect(i2v).toContain(id);
+    }
+    expect(imageInputFor("wan/2-7-image-to-video", "u")).toEqual({ first_frame_url: "u" });
+    expect(imageInputFor("bytedance/seedance-2-mini", "u")).toEqual({ first_frame_url: "u" });
+  });
+
+  it("upgrades Seedance 2.0 Fast to also serve i2v (t2v + first_frame_url)", () => {
+    const m = catalogModel("bytedance/seedance-2-fast");
+    expect(m?.capabilities).toEqual(expect.arrayContaining(["t2v", "i2v"]));
+    expect(m?.imageField).toBe("first_frame_url");
+  });
+
+  it("wires each video-to-video model's verified source-video field + shape", () => {
+    // array-shaped video_urls
+    expect(videoInputFor("wan/2-6-video-to-video", "u")).toEqual({ video_urls: ["u"] });
+    expect(videoInputFor("wan/2-6-flash-video-to-video", "u")).toEqual({ video_urls: ["u"] });
+    // single-string video_url
+    expect(videoInputFor("wan/2-7-videoedit", "u")).toEqual({ video_url: "u" });
+    expect(videoInputFor("topaz/video-upscale", "u")).toEqual({ video_url: "u" });
+    // a model without a videoField yields no fragment
+    expect(videoInputFor("veo-3.1", "u")).toEqual({});
+    expect(videoInputFor("nope", "u")).toEqual({});
+  });
+
+  it("videoCapableModels lists exactly the models carrying a videoField", () => {
+    const v2v = videoCapableModels("video").map((m) => m.id);
+    expect(v2v).toEqual([
+      "wan/2-6-video-to-video",
+      "wan/2-6-flash-video-to-video",
+      "wan/2-7-videoedit",
+      "topaz/video-upscale",
+    ]);
+    // no image-only model leaks into the video-input picker
+    expect(v2v).not.toContain("veo-3.1");
+  });
+
+  it("marks video-edit / upscale models prompt-optional", () => {
+    expect(catalogModel("wan/2-7-videoedit")?.promptOptional).toBe(true);
+    expect(catalogModel("topaz/video-upscale")?.promptOptional).toBe(true);
+    // wan v2v requires a prompt per its doc
+    expect(catalogModel("wan/2-6-video-to-video")?.promptOptional).toBeUndefined();
+  });
+
+  it("keeps every catalog id unique after all three expansions", () => {
+    const ids = MODEL_CATALOG.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
