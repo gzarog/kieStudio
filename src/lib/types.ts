@@ -145,6 +145,31 @@ export const MODEL_CATALOG: CatalogModel[] = [
   { id: "wan/2-5-text-to-video", label: "Wan 2.5 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
   { id: "wan/2-5-image-to-video", label: "Wan 2.5 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
 
+  // ── Video · Phase 2 catalog expansion (ids/imageField verified per doc page) ──
+  // Text-to-video
+  { id: "kling-2.6/text-to-video", label: "Kling 2.6 (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["duration"] },
+  { id: "kling/v3-turbo-text-to-video", label: "Kling V3 Turbo (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["resolution", "duration"] },
+  { id: "kling/v2-5-turbo-text-to-video-pro", label: "Kling V2.5 Turbo Pro (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["duration"] },
+  { id: "kling/v2-1-master-text-to-video", label: "Kling V2.1 Master (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "wan/2-6-text-to-video", label: "Wan 2.6 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "wan/2-7-text-to-video", label: "Wan 2.7 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "grok-imagine/text-to-video", label: "Grok Imagine (T2V)", provider: "xAI", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "bytedance/seedance-2-fast", label: "Seedance 2.0 Fast (T2V)", provider: "ByteDance", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "happyhorse/text-to-video", label: "HappyHorse (T2V)", provider: "HappyHorse", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "happyhorse-1-1/text-to-video", label: "HappyHorse 1.1 (T2V)", provider: "HappyHorse", category: "video", capabilities: ["t2v"], verified: true },
+  // Image-to-video (source image field verified — array vs single per provider)
+  { id: "kling/v3-turbo-image-to-video", label: "Kling V3 Turbo (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls" },
+  { id: "kling/v2-5-turbo-image-to-video-pro", label: "Kling V2.5 Turbo Pro (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_url" },
+  { id: "kling/v2-1-master-image-to-video", label: "Kling V2.1 Master (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
+  { id: "kling/v2-1-pro", label: "Kling V2.1 Pro (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
+  { id: "kling/v2-1-standard", label: "Kling V2.1 Standard (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
+  { id: "bytedance/v1-pro-fast-image-to-video", label: "ByteDance V1 Pro Fast (I2V)", provider: "ByteDance", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
+  { id: "bytedance/seedance-1.5-pro", label: "Seedance 1.5 Pro", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "input_urls" },
+  { id: "grok-imagine/image-to-video", label: "Grok Imagine (I2V)", provider: "xAI", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls" },
+  { id: "wan/2-6-image-to-video", label: "Wan 2.6 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls" },
+  { id: "wan/2-6-flash-image-to-video", label: "Wan 2.6 Flash (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls" },
+  { id: "happyhorse-1-1/image-to-video", label: "HappyHorse 1.1 (I2V)", provider: "HappyHorse", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls" },
+
   // ── Speech / TTS (Unified Jobs API — via the generic /api/jobs proxy) ──
   { id: "elevenlabs/text-to-speech-turbo-2-5", label: "ElevenLabs Turbo 2.5", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
   { id: "elevenlabs/text-to-speech-multilingual-v2", label: "ElevenLabs Multilingual V2", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
