@@ -64,7 +64,7 @@ describe("model catalog", () => {
 
   it("speech models ride the generic Jobs proxy (not dedicated)", () => {
     const speech = catalogByCategory("speech");
-    expect(speech.length).toBe(2);
+    expect(speech.length).toBe(3); // Phase 4 adds Dialogue V3
     expect(speech.every((m) => !m.dedicated && m.capabilities.includes("tts"))).toBe(true);
   });
 
@@ -312,5 +312,19 @@ describe("Phase 3 — video/audio-input catalog expansion", () => {
   it("keeps every catalog id unique after all three expansions", () => {
     const ids = MODEL_CATALOG.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("Phase 4 — speech catalog expansion", () => {
+  it("adds ElevenLabs Dialogue V3 as a Jobs-proxy TTS model", () => {
+    const m = catalogModel("elevenlabs/text-to-dialogue-v3");
+    expect(m?.category).toBe("speech");
+    expect(m?.capabilities).toContain("tts");
+    expect(m?.dedicated).toBeUndefined();
+  });
+
+  it("keeps the speech default on Turbo 2.5 (Dialogue V3 is appended)", () => {
+    expect(defaultModel("speech")).toBe("elevenlabs/text-to-speech-turbo-2-5");
+    expect(catalogByCategory("speech").map((m) => m.id)).toContain("elevenlabs/text-to-dialogue-v3");
   });
 });

@@ -12,10 +12,29 @@ import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
 
 // Verified per-model defaults: Turbo 2.5 documents a voice ID default (James),
 // Multilingual V2's example uses a preset name. Both accept either form.
+// Dialogue V3 requires a voice on every line — default it to the James id too.
 const VOICE_DEFAULTS: Record<string, string> = {
   "elevenlabs/text-to-speech-turbo-2-5": "EkK5I93UQWFDigLMpZcX",
   "elevenlabs/text-to-speech-multilingual-v2": "Rachel",
+  "elevenlabs/text-to-dialogue-v3": "EkK5I93UQWFDigLMpZcX",
 };
+
+// Dialogue V3 wraps the text in a `dialogue: [{ text, voice }]` array (verified
+// per doc); the flat TTS models take `{ text, speed, voice? }`. Build the right
+// `input` fragment per model.
+const DIALOGUE_MODEL = "elevenlabs/text-to-dialogue-v3";
+export function speechInputFor(
+  model: string,
+  { text, voice, speed }: { text: string; voice: string; speed: number }
+): Record<string, unknown> {
+  const v = voice.trim();
+  if (model === DIALOGUE_MODEL) {
+    return { dialogue: [{ text, voice: v || VOICE_DEFAULTS[DIALOGUE_MODEL] }] };
+  }
+  const input: Record<string, unknown> = { text, speed };
+  if (v) input.voice = v;
+  return input;
+}
 
 const SPEEDS = [0.8, 0.9, 1, 1.1, 1.2];
 
@@ -56,8 +75,7 @@ export function SpeechPage() {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
     lastText.current = text;
     try {
-      const input: Record<string, unknown> = { text, speed };
-      if (voice.trim()) input.voice = voice.trim();
+      const input = speechInputFor(model, { text, voice, speed });
       const { taskId } = await postToWorker<{ taskId: string }>("/jobs/submit", { model, input });
       startPolling(taskId);
     } catch (e) { toast(e instanceof Error ? e.message : String(e), "error"); }
