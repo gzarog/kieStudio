@@ -53,6 +53,73 @@ describe("<VideoPage /> integration", () => {
     expect(container.querySelector("p.truncate")?.textContent).toContain("drone over santorini");
   });
 
+  it("Video-to-Video mode: uploads a video and submits the model's source-video field (no duration)", async () => {
+    setApiKey("k");
+    vi.mocked(uploadFile).mockResolvedValue({ fileUrl: "https://host/clip.mp4" });
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).endsWith("/api/upload"))
+        return Promise.resolve(fetchResponse({ fileUrl: "https://host/clip.mp4" }));
+      return Promise.resolve(fetchResponse({ taskId: "V2V" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<VideoPage />);
+    fireEvent.click(screen.getByRole("button", { name: /Video to Video/i }));
+
+    const file = new File(["x"], "clip.mp4", { type: "video/mp4" });
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    type(screen.getByRole("textbox"), "restyle as watercolour");
+    await clickGenerate();
+    await tick(0);
+
+    const postCall = fetchMock.mock.calls.find(
+      (c) => String(c[0]).endsWith("/api/video") && (c[1] as RequestInit)?.method === "POST"
+    );
+    const body = JSON.parse((postCall![1] as RequestInit).body as string);
+    // Default v2v model is the first video-capable model (Wan 2.6 V2V → video_urls array).
+    expect(body.model).toBe("wan/2-6-video-to-video");
+    expect(body.input).toEqual({ video_urls: ["https://host/clip.mp4"] });
+    // v2v must not smuggle in a duration field.
+    expect(body.input).not.toHaveProperty("duration");
+  });
+
+  it("Video-to-Video mode: a prompt-optional model (Topaz upscale) generates without a prompt", async () => {
+    setApiKey("k");
+    vi.mocked(uploadFile).mockResolvedValue({ fileUrl: "https://host/clip.mp4" });
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).endsWith("/api/upload"))
+        return Promise.resolve(fetchResponse({ fileUrl: "https://host/clip.mp4" }));
+      return Promise.resolve(fetchResponse({ taskId: "UP1" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<VideoPage />);
+    fireEvent.click(screen.getByRole("button", { name: /Video to Video/i }));
+    type(screen.getByDisplayValue("Wan 2.6 (V2V)"), "topaz/video-upscale");
+
+    const file = new File(["x"], "clip.mp4", { type: "video/mp4" });
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // No prompt typed — Generate should still be enabled for a prompt-optional model.
+    expect(screen.getByRole("button", { name: /Generate/i })).not.toBeDisabled();
+    await clickGenerate();
+    await tick(0);
+
+    const postCall = fetchMock.mock.calls.find(
+      (c) => String(c[0]).endsWith("/api/video") && (c[1] as RequestInit)?.method === "POST"
+    );
+    const body = JSON.parse((postCall![1] as RequestInit).body as string);
+    expect(body.model).toBe("topaz/video-upscale");
+    expect(body.input).toEqual({ video_url: "https://host/clip.mp4" });
+  });
+
   it("Image-to-Video mode: uploads, then submits the model's image field + string duration", async () => {
     setApiKey("k");
     vi.mocked(uploadFile).mockResolvedValue({ fileUrl: "https://host/frame.png" });

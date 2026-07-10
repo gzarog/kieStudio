@@ -27,16 +27,16 @@ export interface Track {
 
 export type ModelCategory = "chat" | "image" | "video" | "music" | "speech";
 
-export type Capability = "chat" | "t2i" | "i2i" | "edit" | "upscale" | "t2v" | "i2v" | "music" | "tts";
+export type Capability = "chat" | "t2i" | "i2i" | "edit" | "upscale" | "t2v" | "i2v" | "v2v" | "music" | "tts";
 
 /** UI hints for which extra controls a model's `input` accepts. */
-export type InputHint = "size" | "resolution" | "duration" | "image" | "instrumental";
+export type InputHint = "size" | "resolution" | "duration" | "image" | "video" | "instrumental";
 
 /**
  * The `input` field name a model expects its source image URL(s) under.
  * Verified per doc page — NOT uniform across providers:
  *   image_urls / image_input / input_urls / imageUrls take an ARRAY of URLs,
- *   image_url / image take a single URL string.
+ *   image_url / image / first_frame_url take a single URL string.
  */
 export type ImageField =
   | "image_urls"
@@ -44,7 +44,8 @@ export type ImageField =
   | "image_input"
   | "input_urls"
   | "image"
-  | "imageUrls";
+  | "imageUrls"
+  | "first_frame_url";
 
 const IMAGE_ARRAY_FIELDS: ReadonlySet<ImageField> = new Set([
   "image_urls",
@@ -52,6 +53,15 @@ const IMAGE_ARRAY_FIELDS: ReadonlySet<ImageField> = new Set([
   "input_urls",
   "imageUrls",
 ]);
+
+/**
+ * The `input` field name a video-to-video / video-edit / upscale model expects
+ * its source video URL(s) under. Verified per doc page:
+ *   video_urls takes an ARRAY of URLs; video_url takes a single URL string.
+ */
+export type VideoField = "video_urls" | "video_url";
+
+const VIDEO_ARRAY_FIELDS: ReadonlySet<VideoField> = new Set(["video_urls"]);
 
 export interface CatalogModel {
   id: string;
@@ -65,6 +75,8 @@ export interface CatalogModel {
   inputs?: InputHint[];
   /** Where the uploaded image URL goes in `input` (verified per doc page). */
   imageField?: ImageField;
+  /** Where the uploaded source video URL goes in `input` (verified per doc page). */
+  videoField?: VideoField;
   /** The model works without a text prompt (e.g. background removal). */
   promptOptional?: boolean;
 }
@@ -154,7 +166,7 @@ export const MODEL_CATALOG: CatalogModel[] = [
   { id: "wan/2-6-text-to-video", label: "Wan 2.6 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
   { id: "wan/2-7-text-to-video", label: "Wan 2.7 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
   { id: "grok-imagine/text-to-video", label: "Grok Imagine (T2V)", provider: "xAI", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "bytedance/seedance-2-fast", label: "Seedance 2.0 Fast (T2V)", provider: "ByteDance", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "bytedance/seedance-2-fast", label: "Seedance 2.0 Fast", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url" },
   { id: "happyhorse/text-to-video", label: "HappyHorse (T2V)", provider: "HappyHorse", category: "video", capabilities: ["t2v"], verified: true },
   { id: "happyhorse-1-1/text-to-video", label: "HappyHorse 1.1 (T2V)", provider: "HappyHorse", category: "video", capabilities: ["t2v"], verified: true },
   // Image-to-video (source image field verified — array vs single per provider)
@@ -169,6 +181,16 @@ export const MODEL_CATALOG: CatalogModel[] = [
   { id: "wan/2-6-image-to-video", label: "Wan 2.6 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls" },
   { id: "wan/2-6-flash-image-to-video", label: "Wan 2.6 Flash (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls" },
   { id: "happyhorse-1-1/image-to-video", label: "HappyHorse 1.1 (I2V)", provider: "HappyHorse", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls" },
+
+  // ── Video · Phase 3: extra image-to-video (first_frame_url) + video-to-video ──
+  // I2V models whose source frame goes in `first_frame_url` (single string)
+  { id: "wan/2-7-image-to-video", label: "Wan 2.7 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url" },
+  { id: "bytedance/seedance-2-mini", label: "Seedance 2.0 Mini", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url" },
+  // Video-to-video / video-edit / upscale — source video field verified per doc
+  { id: "wan/2-6-video-to-video", label: "Wan 2.6 (V2V)", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_urls" },
+  { id: "wan/2-6-flash-video-to-video", label: "Wan 2.6 Flash (V2V)", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_urls" },
+  { id: "wan/2-7-videoedit", label: "Wan 2.7 Video Edit", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_url", promptOptional: true },
+  { id: "topaz/video-upscale", label: "Topaz Video Upscale", provider: "Topaz", category: "video", capabilities: ["upscale", "v2v"], verified: true, inputs: ["video"], videoField: "video_url", promptOptional: true },
 
   // ── Speech / TTS (Unified Jobs API — via the generic /api/jobs proxy) ──
   { id: "elevenlabs/text-to-speech-turbo-2-5", label: "ElevenLabs Turbo 2.5", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
@@ -219,6 +241,21 @@ export function imageInputFor(modelId: string, url: string): Record<string, unkn
   const field = catalogModel(modelId)?.imageField;
   if (!field) return {};
   return { [field]: IMAGE_ARRAY_FIELDS.has(field) ? [url] : url };
+}
+
+/** Models of a category that can take an uploaded source video (v2v / video edit / upscale). */
+export function videoCapableModels(category: ModelCategory): CatalogModel[] {
+  return catalogByCategory(category).filter((m) => m.videoField);
+}
+
+/**
+ * Build the model-specific `input` fragment carrying an uploaded source video
+ * URL — array vs single-string per the verified doc pages.
+ */
+export function videoInputFor(modelId: string, url: string): Record<string, unknown> {
+  const field = catalogModel(modelId)?.videoField;
+  if (!field) return {};
+  return { [field]: VIDEO_ARRAY_FIELDS.has(field) ? [url] : url };
 }
 
 /** The first model of a category — the sensible default selection. */

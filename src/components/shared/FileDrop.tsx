@@ -10,15 +10,18 @@ interface FileDropProps {
   uploading?: boolean;
   accept?: string;
   label?: string;
+  /** How to render the hosted preview — an image thumbnail (default) or a video. */
+  previewKind?: "image" | "video";
 }
 
-/** Drag-and-drop zone (with click-to-browse fallback) for i2i / i2v source images. */
+/** Drag-and-drop zone (with click-to-browse fallback) for i2i / i2v / v2v source uploads. */
 export function FileDrop({
   onFile,
   previewUrl,
   uploading = false,
   accept = "image/*",
   label = "Drop an image here, or click to browse",
+  previewKind = "image",
 }: FileDropProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -56,7 +59,11 @@ export function FileDrop({
         <p className="text-gray-300 text-sm">Uploading…</p>
       ) : previewUrl ? (
         <div className="space-y-2">
-          <img src={previewUrl} alt="Uploaded source" className="max-h-40 mx-auto rounded-lg" />
+          {previewKind === "video" ? (
+            <video src={previewUrl} controls className="max-h-40 mx-auto rounded-lg" data-testid="file-preview-video" />
+          ) : (
+            <img src={previewUrl} alt="Uploaded source" className="max-h-40 mx-auto rounded-lg" />
+          )}
           <p className="text-gray-400 text-xs">Click to replace</p>
         </div>
       ) : (

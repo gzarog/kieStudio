@@ -9,6 +9,7 @@ const CAP_LABEL: Record<Capability, string> = {
   upscale: "Upscale",
   t2v: "T2V",
   i2v: "I2V",
+  v2v: "V2V",
   music: "Music",
   tts: "TTS",
 };
@@ -35,13 +36,16 @@ interface ModelPickerProps {
   capability?: Capability;
   /** Restrict to models that accept an uploaded source image (i2i/i2v/edit). */
   requireImage?: boolean;
+  /** Restrict to models that accept an uploaded source video (v2v/video edit/upscale). */
+  requireVideo?: boolean;
   className?: string;
 }
 
 /** Catalog-driven model select: options grouped by provider, capability badges below. */
-export function ModelPicker({ category, value, onChange, capability, requireImage, className }: ModelPickerProps) {
+export function ModelPicker({ category, value, onChange, capability, requireImage, requireVideo, className }: ModelPickerProps) {
   let models = catalogByCategory(category, capability);
   if (requireImage) models = models.filter((m) => m.imageField);
+  if (requireVideo) models = models.filter((m) => m.videoField);
   const selected = catalogModel(value);
 
   return (
