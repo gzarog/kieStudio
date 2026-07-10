@@ -100,6 +100,31 @@ export const MODEL_CATALOG: CatalogModel[] = [
   { id: "google/nano-banana-edit", label: "Nano Banana Edit", provider: "Google", category: "image", capabilities: ["edit", "i2i"], verified: true, inputs: ["image"], imageField: "image_urls" },
   { id: "seedream/4.5-edit", label: "Seedream 4.5 Edit", provider: "ByteDance", category: "image", capabilities: ["edit", "i2i"], verified: true, inputs: ["image"], imageField: "image_urls" },
   { id: "recraft/remove-background", label: "Recraft Remove BG", provider: "Recraft", category: "image", capabilities: ["edit"], verified: true, inputs: ["image"], imageField: "image", promptOptional: true },
+  { id: "recraft/crisp-upscale", label: "Recraft Crisp Upscale", provider: "Recraft", category: "image", capabilities: ["upscale"], verified: true, inputs: ["image"], imageField: "image", promptOptional: true },
+
+  // ── Image · Phase 1 catalog expansion (ids/imageField verified per doc page) ──
+  // Text-to-image
+  { id: "bytedance/seedream-v4-text-to-image", label: "Seedream 4.0 (T2I)", provider: "ByteDance", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "seedream/4.5-text-to-image", label: "Seedream 4.5 (T2I)", provider: "ByteDance", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "seedream/5-lite-text-to-image", label: "Seedream 5 Lite (T2I)", provider: "ByteDance", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "seedream/5-pro-text-to-image", label: "Seedream 5 Pro (T2I)", provider: "ByteDance", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "google/imagen4", label: "Imagen 4", provider: "Google", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "google/imagen4-fast", label: "Imagen 4 Fast", provider: "Google", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "google/imagen4-ultra", label: "Imagen 4 Ultra", provider: "Google", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "nano-banana-2", label: "Nano Banana 2", provider: "Google", category: "image", capabilities: ["t2i", "i2i"], verified: true, inputs: ["image"], imageField: "image_input" },
+  { id: "flux-2/pro-text-to-image", label: "Flux-2 Pro (T2I)", provider: "Flux", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "flux-2/flex-text-to-image", label: "Flux-2 Flex (T2I)", provider: "Flux", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "gpt-image/1.5-text-to-image", label: "GPT Image 1.5 (T2I)", provider: "OpenAI", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "qwen/text-to-image", label: "Qwen (T2I)", provider: "Qwen", category: "image", capabilities: ["t2i"], verified: true },
+  { id: "z-image", label: "Z-Image", provider: "Z-Image", category: "image", capabilities: ["t2i"], verified: true },
+  // Image-to-image / edit (source image field verified — array vs single per provider)
+  { id: "bytedance/seedream-v4-edit", label: "Seedream 4.0 Edit", provider: "ByteDance", category: "image", capabilities: ["edit", "i2i"], verified: true, inputs: ["image"], imageField: "image_urls" },
+  { id: "seedream/5-lite-image-to-image", label: "Seedream 5 Lite (I2I)", provider: "ByteDance", category: "image", capabilities: ["i2i"], verified: true, inputs: ["image"], imageField: "image_urls" },
+  { id: "seedream/5-pro-image-to-image", label: "Seedream 5 Pro (I2I)", provider: "ByteDance", category: "image", capabilities: ["i2i"], verified: true, inputs: ["image"], imageField: "image_urls" },
+  { id: "gpt-image-2-image-to-image", label: "GPT Image 2 (I2I)", provider: "OpenAI", category: "image", capabilities: ["i2i"], verified: true, inputs: ["image"], imageField: "input_urls" },
+  { id: "gpt-image/1.5-image-to-image", label: "GPT Image 1.5 (I2I)", provider: "OpenAI", category: "image", capabilities: ["i2i"], verified: true, inputs: ["image"], imageField: "input_urls" },
+  { id: "qwen/image-to-image", label: "Qwen (I2I)", provider: "Qwen", category: "image", capabilities: ["i2i"], verified: true, inputs: ["image"], imageField: "image_url" },
+  { id: "wan/2-7-image", label: "Wan 2.7 Image", provider: "Wan", category: "image", capabilities: ["t2i", "i2i"], verified: true, inputs: ["image"], imageField: "input_urls" },
 
   // ── Video (Unified Jobs API, except Veo which keeps its dedicated router) ──
   { id: "veo-3.1", label: "Veo 3.1", provider: "Google", category: "video", capabilities: ["t2v", "i2v"], verified: true, dedicated: true, inputs: ["resolution", "duration", "image"], imageField: "imageUrls" },
