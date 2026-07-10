@@ -328,3 +328,61 @@ describe("Phase 4 — speech catalog expansion", () => {
     expect(catalogByCategory("speech").map((m) => m.id)).toContain("elevenlabs/text-to-dialogue-v3");
   });
 });
+
+describe("Phase 5 — chat catalog expansion", () => {
+  const NEW_CHAT = [
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-opus-4-5",
+    "claude-sonnet-5",
+    "claude-sonnet-4-5",
+    "claude-haiku-4-5",
+    "claude-fable-5",
+    "gpt-5-5",
+    "gpt-5-4",
+    "gpt-5-2",
+    "gpt-codex",
+    "gemini-3-pro",
+    "gemini-3-1-pro",
+    "gemini-3-flash",
+    "gemini-3-5-flash",
+    "gemini-2-5-flash",
+    "grok-4-5",
+    "grok-4-3",
+  ];
+
+  it("adds every new chat model as a verified, dedicated-router entry", () => {
+    for (const id of NEW_CHAT) {
+      const m = catalogModel(id);
+      expect(m, id).toBeDefined();
+      expect(m!.category).toBe("chat");
+      expect(m!.dedicated).toBe(true);
+      expect(m!.capabilities).toEqual(["chat"]);
+    }
+  });
+
+  it("uses the corrected (dashed, typo-fixed) chat ids from the doc bodies", () => {
+    // slug typos "cluade-*" resolve to real "claude-*" strings
+    expect(catalogModel("claude-fable-5")).toBeDefined();
+    expect(catalogModel("claude-sonnet-5")).toBeDefined();
+    expect(catalogModel("cluade-fable-5")).toBeUndefined();
+    expect(catalogModel("cluade-sonnet-5")).toBeUndefined();
+  });
+
+  it("keeps Claude Sonnet 4.6 the chat default (new models are appended)", () => {
+    expect(defaultModel("chat")).toBe("claude-sonnet-4-6");
+    expect(catalogByCategory("chat")[0].id).toBe("claude-sonnet-4-6");
+  });
+
+  it("groups the new chat provider (xAI / Grok) alongside the existing ones", () => {
+    const providers = groupByProvider(catalogByCategory("chat")).map(([p]) => p);
+    expect(providers).toContain("xAI");
+    expect(providers[0]).toBe("Anthropic"); // Claude Sonnet 4.6 still first
+  });
+
+  it("keeps every catalog id unique after all expansions", () => {
+    const ids = MODEL_CATALOG.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});

@@ -35,14 +35,18 @@ https://kieai.redpandaai.co        (File Upload API — separate host)
   `pending | success | failed` in `functions/api/_lib.ts`).
 
 ## Features
-- 💬 Chat — streaming LLM (Claude / GPT / Gemini)
-- 🖼️ Image — Create + Edit/Remix modes (GPT Image 2, Nano Banana Pro/Edit, Seedream 4.5
-  Edit, Flux-2, Grok Imagine, Ideogram V3, Qwen2, Recraft remove-bg) with drag-and-drop upload
+- 💬 Chat — streaming LLM via the OpenAI-compatible router (Claude Opus 4.5–4.8 /
+  Sonnet 4.5–5 / Haiku 4.5 / Fable 5, GPT-4o / GPT-5.x / Codex, Gemini 2.5–3.5, Grok 4.x)
+- 🖼️ Image — Create + Edit/Remix modes (GPT Image 1.5/2, Nano Banana Pro/2/Edit, Seedream
+  4.0/4.5/5, Imagen 4, Flux-2, Grok Imagine, Ideogram V3, Qwen, Z-Image, Recraft) with
+  drag-and-drop upload
 - 🎵 Music — Suno V4.5/V5.5 + per-track studio actions: Extend, stem separation
   (`separate_vocal`/`split_stem`), convert-to-WAV, timestamped lyrics
-- 🎬 Video — T2V (Veo 3.1 / Kling 3.0 / Seedance 2.0 / Hailuo / Wan / …) + I2V from an
-  uploaded frame (Veo, Kling 2.6, ByteDance, Hailuo 2.3, Wan 2.5)
-- 🗣️ Speech — ElevenLabs TTS (Turbo 2.5, Multilingual V2) via the generic Jobs proxy
+- 🎬 Video — T2V (Veo 3.1 / Kling 2.6–3.0 / Seedance / Hailuo / Wan / Grok / …), I2V from
+  an uploaded frame (image_url / image_urls / first_frame_url per model), and V2V / video
+  edit / upscale from an uploaded clip (Wan 2.6/2.7, Topaz)
+- 🗣️ Speech — ElevenLabs TTS (Turbo 2.5, Multilingual V2, Dialogue V3) via the generic
+  Jobs proxy
 - 🔑 Key modal — validates + persists user key locally; remaining credits show in the
   header and refresh after each completed task
 

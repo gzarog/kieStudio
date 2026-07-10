@@ -42,6 +42,23 @@ describe("<ChatPage /> integration", () => {
     expect(body.messages).toEqual([{ role: "user", content: "hi there" }]);
   });
 
+  it("streams with a Phase 5 chat model when one is selected", async () => {
+    setApiKey("k");
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(sse("ok"), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatPage />);
+    await user.selectOptions(screen.getByLabelText("Model"), "claude-opus-4-8");
+    await user.type(screen.getByPlaceholderText(/Message/i), "hello");
+    await user.click(screen.getByRole("button", { name: /Send/i }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    // The dedicated /chat/completions router forwards the selected model id verbatim.
+    expect(body.model).toBe("claude-opus-4-8");
+  });
+
   it("toasts and requests the key when sending without one", async () => {
     clearApiKey();
     const user = userEvent.setup();
