@@ -81,16 +81,37 @@ export interface CatalogModel {
   promptOptional?: boolean;
 }
 
-// Every `id` below is either in KIE-API-VERIFIED.md or stated verbatim in the
-// official docs index (llms.txt) description — never inferred from a URL path.
-// Chat model identifiers are intentionally limited to the three already in
-// production use: the docs index does not state chat `model` strings and the
-// existing ids mix dashed/dotted forms, so the rest await the doc page bodies.
+// Every `id` below is copied verbatim from the model's docs.kie.ai page (or
+// KIE-API-VERIFIED.md) — never inferred from a URL path. Naming is NOT uniform:
+// several ids differ from their doc slug (dots vs dashes, provider prefixes,
+// corrected "cluade" typos), so each was confirmed against the page body.
 export const MODEL_CATALOG: CatalogModel[] = [
   // ── Chat (dedicated /chat/completions router — OpenAI-compatible) ──
+  // The router forwards any `model` id verbatim; ids below are copied from each
+  // model's docs.kie.ai page (dashed forms; "cluade" slug typos corrected).
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gpt-4o", label: "GPT-4o", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  // Phase 5 chat expansion
+  { id: "claude-opus-4-8", label: "Claude Opus 4.8", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-opus-4-7", label: "Claude Opus 4.7", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-opus-4-6", label: "Claude Opus 4.6", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-opus-4-5", label: "Claude Opus 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-fable-5", label: "Claude Fable 5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gpt-5-5", label: "GPT-5.5", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gpt-5-4", label: "GPT-5.4", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gpt-5-2", label: "GPT-5.2", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gpt-codex", label: "GPT Codex", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gemini-3-pro", label: "Gemini 3 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gemini-3-1-pro", label: "Gemini 3.1 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gemini-3-flash", label: "Gemini 3 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gemini-3-5-flash", label: "Gemini 3.5 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gemini-2-5-flash", label: "Gemini 2.5 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "grok-4-5", label: "Grok 4.5", provider: "xAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "grok-4-3", label: "Grok 4.3", provider: "xAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
 
   // ── Image (Unified Jobs API) ──
   { id: "gpt-image-2", label: "GPT Image 2", provider: "OpenAI", category: "image", capabilities: ["t2i"], verified: true, inputs: ["size"] },
