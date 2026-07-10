@@ -93,6 +93,39 @@ describe("<VideoPage /> integration", () => {
     expect(screen.getByRole("button", { name: /Generate/i })).toBeDisabled();
   });
 
+  it("Image-to-Video: a Phase 2 model (Kling V2.1 Pro) submits its single-string image_url", async () => {
+    setApiKey("k");
+    vi.mocked(uploadFile).mockResolvedValue({ fileUrl: "https://host/frame.png" });
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).endsWith("/api/upload"))
+        return Promise.resolve(fetchResponse({ fileUrl: "https://host/frame.png" }));
+      return Promise.resolve(fetchResponse({ taskId: "V7" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<VideoPage />);
+    fireEvent.click(screen.getByRole("button", { name: /Image to Video/i }));
+    // Switch the i2v model picker to Kling V2.1 Pro (image_url, single string).
+    type(screen.getByDisplayValue("Veo 3.1"), "kling/v2-1-pro");
+
+    const file = new File(["x"], "frame.png", { type: "image/png" });
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    type(screen.getByRole("textbox"), "camera pushes in");
+    await clickGenerate();
+    await tick(0);
+
+    const postCall = fetchMock.mock.calls.find(
+      (c) => String(c[0]).endsWith("/api/video") && (c[1] as RequestInit)?.method === "POST"
+    );
+    const body = JSON.parse((postCall![1] as RequestInit).body as string);
+    expect(body.model).toBe("kling/v2-1-pro");
+    expect(body.input).toEqual({ duration: "5", image_url: "https://host/frame.png" });
+  });
+
   it("sends the selected model, resolution and duration", async () => {
     setApiKey("k");
     const fetchMock = vi.fn().mockResolvedValue(fetchResponse({ taskId: "V1" }));

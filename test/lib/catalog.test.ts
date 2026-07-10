@@ -188,3 +188,74 @@ describe("Phase 1 — image catalog expansion", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+describe("Phase 2 — video catalog expansion", () => {
+  // Ids/labels/fields copied verbatim from each model's docs.kie.ai page.
+  const NEW_T2V = [
+    "kling-2.6/text-to-video",
+    "kling/v3-turbo-text-to-video",
+    "kling/v2-5-turbo-text-to-video-pro",
+    "kling/v2-1-master-text-to-video",
+    "wan/2-6-text-to-video",
+    "wan/2-7-text-to-video",
+    "grok-imagine/text-to-video",
+    "bytedance/seedance-2-fast",
+    "happyhorse/text-to-video",
+    "happyhorse-1-1/text-to-video",
+  ];
+
+  it("adds every new text-to-video model to the t2v picker", () => {
+    const t2v = catalogByCategory("video", "t2v").map((m) => m.id);
+    for (const id of NEW_T2V) expect(t2v).toContain(id);
+  });
+
+  it("preserves the exact (dotted / re-versioned) model strings from the docs", () => {
+    // slug says v25-turbo / seedance-1-5, but the real model strings differ.
+    expect(catalogModel("kling/v2-5-turbo-image-to-video-pro")).toBeDefined();
+    expect(catalogModel("bytedance/seedance-1.5-pro")).toBeDefined();
+    // the base kling/text-to-video slug is really versioned kling-2.6/text-to-video
+    expect(catalogModel("kling-2.6/text-to-video")).toBeDefined();
+    // no slug-shaped ghosts
+    expect(catalogModel("kling/v25-turbo-image-to-video-pro")).toBeUndefined();
+    expect(catalogModel("bytedance/seedance-1-5-pro")).toBeUndefined();
+  });
+
+  it("wires each new image-to-video model's verified input field + shape", () => {
+    // array-shaped
+    expect(imageInputFor("kling/v3-turbo-image-to-video", "u")).toEqual({ image_urls: ["u"] });
+    expect(imageInputFor("grok-imagine/image-to-video", "u")).toEqual({ image_urls: ["u"] });
+    expect(imageInputFor("wan/2-6-image-to-video", "u")).toEqual({ image_urls: ["u"] });
+    expect(imageInputFor("wan/2-6-flash-image-to-video", "u")).toEqual({ image_urls: ["u"] });
+    expect(imageInputFor("happyhorse-1-1/image-to-video", "u")).toEqual({ image_urls: ["u"] });
+    expect(imageInputFor("bytedance/seedance-1.5-pro", "u")).toEqual({ input_urls: ["u"] });
+    // single-string
+    expect(imageInputFor("kling/v2-5-turbo-image-to-video-pro", "u")).toEqual({ image_url: "u" });
+    expect(imageInputFor("kling/v2-1-pro", "u")).toEqual({ image_url: "u" });
+    expect(imageInputFor("kling/v2-1-standard", "u")).toEqual({ image_url: "u" });
+    expect(imageInputFor("bytedance/v1-pro-fast-image-to-video", "u")).toEqual({ image_url: "u" });
+  });
+
+  it("exposes new i2v models in the require-image (i2v) picker", () => {
+    const i2v = imageCapableModels("video").map((m) => m.id);
+    for (const id of [
+      "kling/v3-turbo-image-to-video",
+      "kling/v2-1-pro",
+      "grok-imagine/image-to-video",
+      "wan/2-6-image-to-video",
+      "bytedance/seedance-1.5-pro",
+    ]) {
+      expect(i2v).toContain(id);
+    }
+  });
+
+  it("lists Seedance 1.5 Pro in BOTH the t2v and i2v pickers", () => {
+    expect(catalogByCategory("video", "t2v").map((m) => m.id)).toContain("bytedance/seedance-1.5-pro");
+    expect(imageCapableModels("video").map((m) => m.id)).toContain("bytedance/seedance-1.5-pro");
+  });
+
+  it("does not regress the video defaults (Veo 3.1 stays first / default)", () => {
+    expect(catalogByCategory("video")[0].id).toBe("veo-3.1");
+    expect(defaultModel("video")).toBe("veo-3.1");
+    expect(groupByProvider(catalogByCategory("video")).map(([p]) => p)[0]).toBe("Google");
+  });
+});
