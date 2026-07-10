@@ -106,3 +106,85 @@ describe("model catalog", () => {
     expect(catalogModel("kling-3.0")?.dedicated).toBeUndefined();
   });
 });
+
+describe("Phase 1 — image catalog expansion", () => {
+  // Ids/labels/fields copied verbatim from each model's docs.kie.ai page.
+  const NEW_T2I = [
+    "bytedance/seedream-v4-text-to-image",
+    "seedream/4.5-text-to-image",
+    "seedream/5-lite-text-to-image",
+    "seedream/5-pro-text-to-image",
+    "google/imagen4",
+    "google/imagen4-fast",
+    "google/imagen4-ultra",
+    "nano-banana-2",
+    "flux-2/pro-text-to-image",
+    "flux-2/flex-text-to-image",
+    "gpt-image/1.5-text-to-image",
+    "qwen/text-to-image",
+    "z-image",
+  ];
+
+  it("adds every new text-to-image model to the t2i picker", () => {
+    const t2i = catalogByCategory("image", "t2i").map((m) => m.id);
+    for (const id of NEW_T2I) expect(t2i).toContain(id);
+  });
+
+  it("preserves the exact (dotted / prefixed) model strings from the docs", () => {
+    // These deliberately do NOT match their URL slug — dots vs dashes, provider prefix.
+    expect(catalogModel("seedream/4.5-text-to-image")).toBeDefined();
+    expect(catalogModel("gpt-image/1.5-text-to-image")).toBeDefined();
+    expect(catalogModel("gpt-image/1.5-image-to-image")).toBeDefined();
+    expect(catalogModel("bytedance/seedream-v4-text-to-image")).toBeDefined();
+    expect(catalogModel("bytedance/seedream-v4-edit")).toBeDefined();
+    // no accidental slug-shaped duplicates
+    expect(catalogModel("seedream/4-5-text-to-image")).toBeUndefined();
+    expect(catalogModel("gpt-image/1-5-text-to-image")).toBeUndefined();
+  });
+
+  it("wires each new image-to-image model's verified input field + shape", () => {
+    // array-shaped `image_urls`
+    expect(imageInputFor("bytedance/seedream-v4-edit", "u")).toEqual({ image_urls: ["u"] });
+    expect(imageInputFor("seedream/5-lite-image-to-image", "u")).toEqual({ image_urls: ["u"] });
+    expect(imageInputFor("seedream/5-pro-image-to-image", "u")).toEqual({ image_urls: ["u"] });
+    // array-shaped `input_urls`
+    expect(imageInputFor("gpt-image-2-image-to-image", "u")).toEqual({ input_urls: ["u"] });
+    expect(imageInputFor("gpt-image/1.5-image-to-image", "u")).toEqual({ input_urls: ["u"] });
+    expect(imageInputFor("wan/2-7-image", "u")).toEqual({ input_urls: ["u"] });
+    // array-shaped `image_input`
+    expect(imageInputFor("nano-banana-2", "u")).toEqual({ image_input: ["u"] });
+    // single-string `image_url`
+    expect(imageInputFor("qwen/image-to-image", "u")).toEqual({ image_url: "u" });
+  });
+
+  it("exposes new i2i / edit models in the require-image (edit) picker", () => {
+    const editable = imageCapableModels("image").map((m) => m.id);
+    for (const id of [
+      "bytedance/seedream-v4-edit",
+      "seedream/5-lite-image-to-image",
+      "gpt-image-2-image-to-image",
+      "qwen/image-to-image",
+      "nano-banana-2",
+      "wan/2-7-image",
+    ]) {
+      expect(editable).toContain(id);
+    }
+  });
+
+  it("adds the Recraft crisp upscaler as a prompt-optional, image-in edit model", () => {
+    const m = catalogModel("recraft/crisp-upscale");
+    expect(m?.capabilities).toContain("upscale");
+    expect(m?.promptOptional).toBe(true);
+    expect(imageInputFor("recraft/crisp-upscale", "u")).toEqual({ image: "u" });
+  });
+
+  it("does not regress the image defaults (gpt-image-2 stays first / default)", () => {
+    expect(catalogByCategory("image")[0].id).toBe("gpt-image-2");
+    expect(defaultModel("image")).toBe("gpt-image-2");
+  });
+
+  it("keeps every catalog id unique after the expansion", () => {
+    const ids = MODEL_CATALOG.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});

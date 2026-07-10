@@ -136,4 +136,51 @@ describe("<ImagePage /> integration", () => {
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.model).toBe("nano-banana");
   });
+
+  it("can select a Phase 1 text-to-image model (Seedream 4.5) and submit its exact id", async () => {
+    setApiKey("k");
+    const fetchMock = vi.fn().mockResolvedValue(fetchResponse({ taskId: "T1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ImagePage />);
+    type(screen.getByRole("textbox"), "a temple");
+    type(screen.getByDisplayValue("GPT Image 2"), "seedream/4.5-text-to-image");
+    await clickGenerate();
+    await tick(0);
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.model).toBe("seedream/4.5-text-to-image");
+  });
+
+  it("Edit mode: a Phase 1 i2i model submits its verified input_urls field", async () => {
+    setApiKey("k");
+    vi.mocked(uploadFile).mockResolvedValue({ fileUrl: "https://host/src.png" });
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).endsWith("/api/upload"))
+        return Promise.resolve(fetchResponse({ fileUrl: "https://host/src.png" }));
+      return Promise.resolve(fetchResponse({ taskId: "T9" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ImagePage />);
+    fireEvent.click(screen.getByRole("button", { name: /Edit \/ Remix/i }));
+    type(screen.getByDisplayValue("Nano Banana Pro"), "gpt-image-2-image-to-image");
+
+    const file = new File(["x"], "src.png", { type: "image/png" });
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("file-input"), { target: { files: [file] } });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    type(screen.getByRole("textbox"), "make it snow");
+    await clickGenerate();
+    await tick(0);
+
+    const postCall = fetchMock.mock.calls.find(
+      (c) => String(c[0]).endsWith("/api/image") && (c[1] as RequestInit)?.method === "POST"
+    );
+    const body = JSON.parse((postCall![1] as RequestInit).body as string);
+    expect(body.model).toBe("gpt-image-2-image-to-image");
+    expect(body.input).toEqual({ input_urls: ["https://host/src.png"] });
+  });
 });
