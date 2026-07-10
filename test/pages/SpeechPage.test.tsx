@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import { SpeechPage } from "../../src/pages/SpeechPage";
+import { SpeechPage, speechInputFor } from "../../src/pages/SpeechPage";
 import { setApiKey, clearApiKey } from "../../src/lib/apiKey";
 import * as ui from "../../src/lib/ui";
 import { fetchResponse } from "../helpers";
@@ -88,5 +88,46 @@ describe("<SpeechPage /> integration", () => {
     const body = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
     expect(body.input.voice).toBe("Arabella");
     expect(body.input.speed).toBe(1.2);
+  });
+
+  it("Dialogue V3 submits the dialogue-array input shape with its default voice", async () => {
+    setApiKey("k");
+    const fetchMock = vi.fn().mockResolvedValue(fetchResponse({ taskId: "DLG1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container } = render(<SpeechPage />);
+    type(container.querySelector("textarea")!, "Hello there.");
+    type(screen.getByLabelText("Model"), "elevenlabs/text-to-dialogue-v3");
+    await clickGenerate();
+    await tick(0);
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
+    expect(body.model).toBe("elevenlabs/text-to-dialogue-v3");
+    // Dialogue V3 wraps text in a `dialogue` array — not a flat { text, speed }.
+    expect(body.input).toEqual({
+      dialogue: [{ text: "Hello there.", voice: "EkK5I93UQWFDigLMpZcX" }],
+    });
+    expect(body.input).not.toHaveProperty("speed");
+  });
+});
+
+describe("speechInputFor", () => {
+  it("builds the flat { text, speed, voice? } body for the standard TTS models", () => {
+    expect(
+      speechInputFor("elevenlabs/text-to-speech-turbo-2-5", { text: "hi", voice: "James", speed: 1 })
+    ).toEqual({ text: "hi", speed: 1, voice: "James" });
+    // an empty voice is omitted
+    expect(
+      speechInputFor("elevenlabs/text-to-speech-multilingual-v2", { text: "hi", voice: "  ", speed: 0.9 })
+    ).toEqual({ text: "hi", speed: 0.9 });
+  });
+
+  it("wraps Dialogue V3 in a dialogue array and defaults a missing voice", () => {
+    expect(
+      speechInputFor("elevenlabs/text-to-dialogue-v3", { text: "line", voice: "Bella", speed: 1 })
+    ).toEqual({ dialogue: [{ text: "line", voice: "Bella" }] });
+    expect(
+      speechInputFor("elevenlabs/text-to-dialogue-v3", { text: "line", voice: "", speed: 1 })
+    ).toEqual({ dialogue: [{ text: "line", voice: "EkK5I93UQWFDigLMpZcX" }] });
   });
 });

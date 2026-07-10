@@ -195,6 +195,9 @@ export const MODEL_CATALOG: CatalogModel[] = [
   // ── Speech / TTS (Unified Jobs API — via the generic /api/jobs proxy) ──
   { id: "elevenlabs/text-to-speech-turbo-2-5", label: "ElevenLabs Turbo 2.5", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
   { id: "elevenlabs/text-to-speech-multilingual-v2", label: "ElevenLabs Multilingual V2", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
+  // Text-to-dialogue takes a `dialogue: [{ text, voice }]` array rather than a flat
+  // { text, voice } body — the SpeechPage adapts the input shape per model.
+  { id: "elevenlabs/text-to-dialogue-v3", label: "ElevenLabs Dialogue V3", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
 
   // ── Music (dedicated Suno /generate router) ──
   { id: "V5_5", label: "Suno V5.5", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
