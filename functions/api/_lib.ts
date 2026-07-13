@@ -13,7 +13,8 @@
 // Dedicated routers (kept separate — verified distinct contracts):
 //   Chat:  POST /chat/completions           (OpenAI-compatible SSE)
 //   Suno:  POST /generate + GET /generate/record-info
-//          extras: /generate/extend, /vocal-removal/*, /wav/*, /lyrics/*,
+//          extras: /generate/extend, /generate/upload-cover, /vocal-removal/*,
+//          /wav/*, /lyrics/*, /style/*, /mp4/*,
 //          /generate/get-timestamped-lyrics (see functions/api/suno)
 //   Veo:   POST /veo/generate + GET /veo/record-info   (successFlag/resultUrls shape)
 //
