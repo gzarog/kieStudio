@@ -9,13 +9,35 @@ export const onRequestPost: PagesFunction = (ctx) =>
     const key = userKey(ctx.request);
     if (!key) return noKey();
 
-    const b = await ctx.request.json<{ prompt: string; model: string; instrumental: boolean }>();
-    if (!b.prompt?.trim()) return badRequest("Prompt is required.");
+    const b = await ctx.request.json<{
+      prompt?: string; model: string; instrumental?: boolean; customMode?: boolean;
+      style?: string; title?: string; negativeTags?: string; vocalGender?: string;
+      styleWeight?: number; weirdnessConstraint?: number; audioWeight?: number;
+    }>();
+
+    const customMode = !!b.customMode;
+    const instrumental = !!b.instrumental;
+    if (customMode) {
+      // Custom mode needs style + title; lyrics (prompt) only when not instrumental.
+      if (!b.style?.trim()) return badRequest("Style is required in custom mode.");
+      if (!b.title?.trim()) return badRequest("Title is required in custom mode.");
+      if (!instrumental && !b.prompt?.trim())
+        return badRequest("Lyrics (prompt) are required for a vocal track in custom mode.");
+    } else if (!b.prompt?.trim()) {
+      return badRequest("Prompt is required.");
+    }
+
+    // BYOK: never send callBackUrl — we poll record-info instead. Copy each
+    // optional param through only when the client supplied it.
+    const body: Record<string, unknown> = { customMode, instrumental, model: b.model };
+    if (b.prompt !== undefined) body.prompt = b.prompt;
+    for (const k of ["style", "title", "negativeTags", "vocalGender", "styleWeight", "weirdnessConstraint", "audioWeight"] as const)
+      if (b[k] !== undefined) body[k] = b[k];
 
     const res = await fetch(`${KIE_BASE}/generate`, {
       method: "POST",
       headers: kieHeaders(key),
-      body: JSON.stringify({ prompt: b.prompt, customMode: false, instrumental: b.instrumental, model: b.model }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) return json({ error: await res.text() }, res.status);
     const data = await res.json<{ data: { taskId: string } }>();

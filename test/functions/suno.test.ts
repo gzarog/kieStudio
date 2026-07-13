@@ -88,6 +88,67 @@ describe("suno actions (POST)", () => {
     );
   });
 
+  it("extend: forwards defaultParamFlag + style/title/continueAt when customizing", async () => {
+    const fetchMock = mockFetchSequence(fetchResponse({ data: { taskId: "E2" } }));
+    await post("extend", {
+      audioId: "a", prompt: "bridge", model: "V5_5",
+      defaultParamFlag: true, style: "lofi", title: "Encore", continueAt: 90,
+    });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      defaultParamFlag: true, audioId: "a", prompt: "bridge", model: "V5_5",
+      style: "lofi", title: "Encore", continueAt: 90,
+    });
+  });
+
+  it("boost-style: 400 without content; returns the boosted text inline", async () => {
+    expect((await post("boost-style", {})).status).toBe(400);
+    const fetchMock = mockFetchSequence(
+      fetchResponse({ data: { taskId: "B1", result: "Pop, mysterious, cinematic" } })
+    );
+    const res = await post("boost-style", { content: "pop mysterious" });
+    expect(await res.json()).toEqual({ status: "success", result: "Pop, mysterious, cinematic" });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.kie.ai/api/v1/style/generate");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ content: "pop mysterious" });
+  });
+
+  it("boost-style: falls back to a taskId when no inline result", async () => {
+    mockFetchSequence(fetchResponse({ data: { taskId: "B2" } }));
+    const res = await post("boost-style", { content: "jazz" });
+    expect(await res.json()).toEqual({ taskId: "B2" });
+  });
+
+  it("cover: validates uploadUrl/model and posts to /generate/upload-cover", async () => {
+    expect((await post("cover", { model: "V5_5" })).status).toBe(400); // no uploadUrl
+    expect((await post("cover", { uploadUrl: "u" })).status).toBe(400); // no model
+
+    const fetchMock = mockFetchSequence(fetchResponse({ data: { taskId: "CV1" } }));
+    const res = await post("cover", {
+      uploadUrl: "https://h/a.mp3", model: "V5_5", instrumental: false,
+      customMode: true, style: "reggae", title: "Sunrise", prompt: "[Verse]…",
+    });
+    expect(await res.json()).toEqual({ taskId: "CV1" });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.kie.ai/api/v1/generate/upload-cover");
+    expect(JSON.parse(init.body)).toEqual({
+      uploadUrl: "https://h/a.mp3", customMode: true, instrumental: false, model: "V5_5",
+      prompt: "[Verse]…", style: "reggae", title: "Sunrise",
+    });
+  });
+
+  it("cover: 400 in custom mode without style/title", async () => {
+    expect((await post("cover", { uploadUrl: "u", model: "V5_5", customMode: true, title: "T" })).status).toBe(400);
+    expect((await post("cover", { uploadUrl: "u", model: "V5_5", customMode: true, style: "S" })).status).toBe(400);
+  });
+
+  it("mp4: validates taskId/audioId and posts to /mp4/generate", async () => {
+    expect((await post("mp4", { taskId: "t" })).status).toBe(400);
+    const fetchMock = mockFetchSequence(fetchResponse({ data: { taskId: "V1" } }));
+    const res = await post("mp4", { taskId: "t", audioId: "a" });
+    expect(await res.json()).toEqual({ taskId: "V1" });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.kie.ai/api/v1/mp4/generate");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ taskId: "t", audioId: "a" });
+  });
+
   it("propagates upstream errors with their status", async () => {
     mockFetchSequence(fetchResponse("quota", { ok: false, status: 429, text: "quota" }));
     const res = await post("wav", { taskId: "t", audioId: "a" });
@@ -156,6 +217,35 @@ describe("suno status (GET)", () => {
     expect(await res.json()).toEqual({
       status: "success",
       result: [{ title: "T", text: "[Verse]…" }],
+    });
+  });
+
+  it("cover: polls /generate/record-info and returns the sunoData tracks", async () => {
+    const fetchMock = mockFetchSequence(
+      fetchResponse({
+        data: { status: "SUCCESS", response: { sunoData: [{ id: "c1", title: "Cover" }] } },
+      })
+    );
+    const res = await poll("taskId=CV1&kind=cover");
+    expect(await res.json()).toEqual({ status: "success", result: [{ id: "c1", title: "Cover" }] });
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.kie.ai/api/v1/generate/record-info?taskId=CV1"
+    );
+  });
+
+  it("mp4: returns the videoUrl on SUCCESS", async () => {
+    const fetchMock = mockFetchSequence(
+      fetchResponse({ data: { status: "SUCCESS", response: { videoUrl: "m.mp4" } } })
+    );
+    const res = await poll("taskId=V1&kind=mp4");
+    expect(await res.json()).toEqual({ status: "success", result: { videoUrl: "m.mp4" } });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.kie.ai/api/v1/mp4/record-info?taskId=V1");
+  });
+
+  it("mp4: maps a failed render to failed", async () => {
+    mockFetchSequence(fetchResponse({ data: { status: "GENERATE_MP4_FAILED", errorMessage: "no render" } }));
+    expect(await (await poll("taskId=V1&kind=mp4")).json()).toEqual({
+      status: "failed", result: null, error: "no render",
     });
   });
 
