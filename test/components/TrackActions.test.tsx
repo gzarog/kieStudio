@@ -21,9 +21,9 @@ const click = (name: RegExp) =>
   act(async () => { fireEvent.click(screen.getByRole("button", { name })); });
 
 describe("<TrackActions />", () => {
-  it("renders the four studio action buttons", () => {
+  it("renders the studio action buttons", () => {
     render(<TrackActions track={track} />);
-    for (const name of ["Extend", "Stems", "WAV", "Lyrics"]) {
+    for (const name of ["Extend", "Stems", "WAV", "Lyrics", "Video"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
   });
@@ -96,6 +96,48 @@ describe("<TrackActions />", () => {
     expect(onExtended).toHaveBeenCalledWith([
       expect.objectContaining({ id: "a2", taskId: "E1", model: "V5_5" }),
     ]);
+  });
+
+  it("Extend: sends continueAt + defaultParamFlag/style/title when customized", async () => {
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Promise.resolve(fetchResponse({ taskId: "E2" }));
+      return Promise.resolve(fetchResponse({ status: "success", result: [] }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<TrackActions track={track} />);
+    await click(/^Extend$/);
+    fireEvent.change(screen.getByLabelText(/extension prompt/i), { target: { value: "bridge" } });
+    fireEvent.change(screen.getByLabelText(/continue at/i), { target: { value: "90" } });
+    await click(/Style\/title/i);
+    fireEvent.change(screen.getByLabelText(/extension style/i), { target: { value: "lofi" } });
+    fireEvent.change(screen.getByLabelText(/extension title/i), { target: { value: "Encore" } });
+    await click(/Extend track/i);
+    await tick(0);
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toEqual({
+      audioId: "audio-1", prompt: "bridge", model: "V5_5",
+      continueAt: 90, defaultParamFlag: true, style: "lofi", title: "Encore",
+    });
+  });
+
+  it("Video: renders the MP4 from taskId/audioId", async () => {
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Promise.resolve(fetchResponse({ taskId: "V1" }));
+      return Promise.resolve(fetchResponse({ status: "success", result: { videoUrl: "https://s/v.mp4" } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<TrackActions track={track} />);
+    await click(/^Video$/);
+    await click(/Render music video/i);
+    await tick(4000);
+
+    expect(screen.getByRole("link", { name: /Download MP4/i })).toHaveAttribute("href", "https://s/v.mp4");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/suno/mp4");
+    expect(JSON.parse(init!.body as string)).toEqual({ taskId: "task-1", audioId: "audio-1" });
+    expect(String(fetchMock.mock.calls[1][0])).toContain("kind=mp4");
   });
 
   it("Lyrics: fetches synchronously and renders timestamped words", async () => {
