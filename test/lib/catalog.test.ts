@@ -9,6 +9,7 @@ import {
   imageInputFor,
   videoCapableModels,
   videoInputFor,
+  sunoLimits,
 } from "../../src/lib/types";
 
 describe("model catalog", () => {
@@ -382,6 +383,43 @@ describe("Phase 5 — chat catalog expansion", () => {
   });
 
   it("keeps every catalog id unique after all expansions", () => {
+    const ids = MODEL_CATALOG.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("Phase 6 — music catalog expansion + char limits", () => {
+  // The exact `model` values Suno's /generate accepts (verified on the doc page).
+  const NEW_MUSIC = ["V5", "V4_5PLUS", "V4_5ALL", "V4"];
+
+  it("adds every new Suno model as a verified, dedicated music entry", () => {
+    for (const id of NEW_MUSIC) {
+      const m = catalogModel(id);
+      expect(m, id).toBeDefined();
+      expect(m!.category).toBe("music");
+      expect(m!.dedicated).toBe(true);
+      expect(m!.capabilities).toEqual(["music"]);
+    }
+  });
+
+  it("keeps Suno V5.5 first / the music default (new models are appended around it)", () => {
+    expect(catalogByCategory("music")[0].id).toBe("V5_5");
+    expect(defaultModel("music")).toBe("V5_5");
+  });
+
+  it("lists the full six-model Suno lineup in curated order", () => {
+    expect(catalogByCategory("music").map((m) => m.id)).toEqual([
+      "V5_5", "V5", "V4_5PLUS", "V4_5ALL", "V4_5", "V4",
+    ]);
+  });
+
+  it("sunoLimits: V4 is the tightest, later models allow the larger caps", () => {
+    expect(sunoLimits("V4")).toEqual({ prompt: 3000, style: 200, title: 80, nonCustomPrompt: 500 });
+    for (const id of ["V5_5", "V5", "V4_5PLUS", "V4_5ALL", "V4_5"])
+      expect(sunoLimits(id)).toEqual({ prompt: 5000, style: 1000, title: 100, nonCustomPrompt: 500 });
+  });
+
+  it("keeps every catalog id unique after the music expansion", () => {
     const ids = MODEL_CATALOG.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
   });

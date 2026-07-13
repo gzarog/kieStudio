@@ -221,9 +221,28 @@ export const MODEL_CATALOG: CatalogModel[] = [
   { id: "elevenlabs/text-to-dialogue-v3", label: "ElevenLabs Dialogue V3", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
 
   // ── Music (dedicated Suno /generate router) ──
+  // Model ids are the exact `model` values Suno's /generate accepts (verified on
+  // the Generate Music doc page). V5_5 stays first — it's the default selection.
   { id: "V5_5", label: "Suno V5.5", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
+  { id: "V5", label: "Suno V5", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
+  { id: "V4_5PLUS", label: "Suno V4.5 Plus", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
+  { id: "V4_5ALL", label: "Suno V4.5 All", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
   { id: "V4_5", label: "Suno V4.5", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
+  { id: "V4", label: "Suno V4", provider: "Suno", category: "music", capabilities: ["music"], verified: true, dedicated: true },
 ];
+
+/** Suno per-model character limits, for live prompt/style counters in the UI. */
+export interface SunoLimits { prompt: number; style: number; title: number; nonCustomPrompt: number }
+
+/**
+ * Character limits per Suno model (verified on docs.kie.ai). V4 is the tightest
+ * (prompt 3000 / style 200); every later model allows prompt 5000 / style 1000.
+ * Non-custom mode caps the prompt at 500 on all models.
+ */
+export function sunoLimits(model: string): SunoLimits {
+  if (model === "V4") return { prompt: 3000, style: 200, title: 80, nonCustomPrompt: 500 };
+  return { prompt: 5000, style: 1000, title: 100, nonCustomPrompt: 500 };
+}
 
 /**
  * Catalog models for a category, in curated order. Pass `capability` to keep
