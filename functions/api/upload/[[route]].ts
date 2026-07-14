@@ -23,14 +23,23 @@ export const onRequestPost: PagesFunction = (ctx) =>
     const res = await uploadBase64(key, b.base64Data, b.fileName, b.uploadPath ?? "images");
     if (!res.ok) return json({ error: await res.text() }, res.status);
 
+    // The File Upload API returns the hosted URL under `downloadUrl` (older/other
+    // variants used `fileUrl`) — accept either so a contract tweak can't break us.
     const data = await res.json<{
-      data?: { fileUrl?: string; fileName?: string; expiresAt?: string };
+      data?: {
+        downloadUrl?: string;
+        fileUrl?: string;
+        fileName?: string;
+        uploadedAt?: string;
+        expiresAt?: string;
+      };
     }>();
-    if (!data.data?.fileUrl) return json({ error: "Upload failed: no fileUrl returned." }, 502);
+    const fileUrl = data.data?.downloadUrl ?? data.data?.fileUrl;
+    if (!fileUrl) return json({ error: "Upload failed: no download URL returned." }, 502);
 
     return json({
-      fileUrl: data.data.fileUrl,
-      fileName: data.data.fileName,
-      expiresAt: data.data.expiresAt,
+      fileUrl,
+      fileName: data.data?.fileName,
+      expiresAt: data.data?.expiresAt ?? data.data?.uploadedAt,
     });
   });
