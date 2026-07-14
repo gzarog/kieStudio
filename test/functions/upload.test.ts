@@ -22,12 +22,13 @@ describe("upload proxy (POST)", () => {
       fetchResponse({
         success: true,
         code: 200,
-        data: { fileUrl: "https://kieai.redpandaai.co/files/images/a.png", fileName: "a.png", expiresAt: "2026-07-12T00:00:00Z" },
+        // Real API shape: the hosted URL comes back as `downloadUrl`.
+        data: { downloadUrl: "https://tempfile.redpandaai.co/xxx/a.png", fileName: "a.png", uploadedAt: "2026-07-12T00:00:00Z" },
       })
     );
     const res = await upload({ base64Data: "data:image/png;base64,AA==", fileName: "a.png" });
     expect(await res.json()).toEqual({
-      fileUrl: "https://kieai.redpandaai.co/files/images/a.png",
+      fileUrl: "https://tempfile.redpandaai.co/xxx/a.png",
       fileName: "a.png",
       expiresAt: "2026-07-12T00:00:00Z",
     });
@@ -41,6 +42,14 @@ describe("upload proxy (POST)", () => {
       fileName: "a.png",
       uploadPath: "images",
     });
+  });
+
+  it("still accepts a legacy `fileUrl` response field", async () => {
+    mockFetchSequence(
+      fetchResponse({ success: true, code: 200, data: { fileUrl: "https://kieai.redpandaai.co/files/images/b.png" } })
+    );
+    const res = await upload({ base64Data: "data:image/png;base64,AA==" });
+    expect((await res.json()).fileUrl).toBe("https://kieai.redpandaai.co/files/images/b.png");
   });
 
   it("propagates upstream errors with their status", async () => {
