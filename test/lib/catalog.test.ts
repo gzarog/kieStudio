@@ -9,6 +9,8 @@ import {
   imageInputFor,
   videoCapableModels,
   videoInputFor,
+  optionDefaults,
+  optionInputFor,
   sunoLimits,
 } from "../../src/lib/types";
 
@@ -313,6 +315,97 @@ describe("Phase 3 — video/audio-input catalog expansion", () => {
   it("keeps every catalog id unique after all three expansions", () => {
     const ids = MODEL_CATALOG.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("Phase 7 — verified per-model video options", () => {
+  const videoModels = catalogByCategory("video");
+
+  it("every i2v-capable video model carries an imageField (no unreachable entries)", () => {
+    for (const m of videoModels.filter((m) => m.capabilities.includes("i2v"))) {
+      expect(m.imageField, `${m.id} is i2v but has no imageField`).toBeTruthy();
+    }
+  });
+
+  it("every v2v-capable video model carries a videoField", () => {
+    for (const m of videoModels.filter((m) => m.capabilities.includes("v2v"))) {
+      expect(m.videoField, `${m.id} is v2v but has no videoField`).toBeTruthy();
+    }
+  });
+
+  it("option enums are non-empty, include their default, and never collide with source/prompt fields", () => {
+    for (const m of videoModels) {
+      for (const o of m.options ?? []) {
+        expect(o.values.length, `${m.id}.${o.field}`).toBeGreaterThan(0);
+        expect(o.values, `${m.id}.${o.field} default`).toContain(o.default);
+        expect(["prompt", m.imageField, m.videoField]).not.toContain(o.field);
+      }
+    }
+  });
+
+  it("optionInputFor preserves the documented value types (string vs number enums)", () => {
+    // Hailuo documents duration as a STRING enum…
+    expect(optionInputFor("hailuo/02-image-to-video-standard")).toEqual({
+      duration: "10",
+      resolution: "768P",
+    });
+    // …Seedance as a NUMBER (a "5" select value must come back as 5).
+    expect(optionInputFor("seedance-2.0", { duration: "10", resolution: "1080p" })).toEqual({
+      duration: 10,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+    });
+  });
+
+  it("merges the API-required constants (fixedInput) into the option fragment", () => {
+    expect(optionInputFor("kling-3.0")).toEqual({
+      multi_shots: false,
+      sound: false,
+      duration: "5",
+      mode: "std",
+      aspect_ratio: "16:9",
+    });
+    expect(optionInputFor("wan/2-6-flash-image-to-video").audio).toBe(false);
+  });
+
+  it("optionDefaults exposes select-friendly string defaults", () => {
+    expect(optionDefaults("veo-3.1")).toEqual({
+      aspect_ratio: "16:9",
+      resolution: "720p",
+      duration: "8",
+    });
+    expect(optionDefaults("hailuo/02-text-to-video-pro")).toEqual({});
+  });
+
+  it("restores the three Hailuo I2V models to the picker via their doc-verified image_url", () => {
+    const i2v = imageCapableModels("video").map((m) => m.id);
+    for (const id of [
+      "hailuo/2-3-image-to-video-standard",
+      "hailuo/02-image-to-video-pro",
+      "hailuo/02-image-to-video-standard",
+    ]) {
+      expect(i2v).toContain(id);
+      expect(imageInputFor(id, "u")).toEqual({ image_url: "u" });
+    }
+  });
+
+  it("drops the dead ByteDance V1 Pro/Lite entries (upstream server exception)", () => {
+    for (const id of [
+      "bytedance/v1-pro-text-to-video",
+      "bytedance/v1-pro-image-to-video",
+      "bytedance/v1-lite-text-to-video",
+      "bytedance/v1-lite-image-to-video",
+    ]) {
+      expect(catalogModel(id), id).toBeUndefined();
+    }
+    // The fast i2v variant is alive and stays.
+    expect(catalogModel("bytedance/v1-pro-fast-image-to-video")).toBeDefined();
+  });
+
+  it("marks Topaz as promptless and keeps both Veo tiers on the dedicated router", () => {
+    expect(catalogModel("topaz/video-upscale")?.noPrompt).toBe(true);
+    expect(catalogModel("veo-3.1")?.dedicated).toBe(true);
+    expect(catalogModel("veo3")?.dedicated).toBe(true);
   });
 });
 

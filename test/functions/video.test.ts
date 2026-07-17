@@ -37,10 +37,44 @@ describe("video submit (POST)", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).model).toBe("bytedance/seedance-2");
   });
 
-  it("keeps Veo 3.1 on its dedicated /veo/generate router", async () => {
+  it("keeps Veo on its dedicated /veo/generate router with an explicit model value", async () => {
     const fetchMock = mockFetchSequence(fetchResponse({ data: { taskId: "V3" } }));
-    await submit({ prompt: "veo clip", model: "veo-3.1" });
+    await submit({ prompt: "veo clip", model: "veo-3.1", input: { resolution: "1080p", duration: 8 } });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.kie.ai/api/v1/veo/generate");
+    // The legacy veo-3.1 id maps to veo3_fast (the tier the API was defaulting
+    // to) so /veo/generate no longer silently picks the model itself.
+    expect(JSON.parse(init.body)).toEqual({
+      model: "veo3_fast",
+      resolution: "1080p",
+      duration: 8,
+      prompt: "veo clip",
+    });
+  });
+
+  it("routes the Veo quality tier (veo3) through the dedicated router too", async () => {
+    const fetchMock = mockFetchSequence(fetchResponse({ data: { taskId: "V4" } }));
+    await submit({ prompt: "veo clip", model: "veo3" });
     expect(fetchMock.mock.calls[0][0]).toBe("https://api.kie.ai/api/v1/veo/generate");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).model).toBe("veo3");
+  });
+
+  it("accepts a promptless submit when input carries source media (Topaz upscale)", async () => {
+    const fetchMock = mockFetchSequence(fetchResponse({ data: { taskId: "UP1" } }));
+    const res = await submit({
+      prompt: "",
+      model: "topaz/video-upscale",
+      input: { video_url: "https://host/clip.mp4", upscale_factor: "2" },
+    });
+    expect(await res.json()).toEqual({ taskId: "UP1" });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    // No empty prompt field is smuggled into the model input.
+    expect(body.input).toEqual({ video_url: "https://host/clip.mp4", upscale_factor: "2" });
+  });
+
+  it("still 400s a promptless submit with no source media", async () => {
+    const res = await submit({ prompt: "", model: "kling-3.0", input: { duration: "5" } });
+    expect(res.status).toBe(400);
   });
 
   it("propagates an upstream error with its status", async () => {
