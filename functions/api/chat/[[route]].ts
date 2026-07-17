@@ -1,4 +1,7 @@
-import { KIE_BASE, userKey, kieHeaders, noKey, badRequest, withCors, guard } from "../_lib";
+import {
+  KIE_CHAT_BASE, userKey, kieHeaders, noKey, badRequest, withCors, guard,
+  chatRoute, buildChatBody,
+} from "../_lib";
 
 export { onRequestOptions } from "../_lib";
 
@@ -11,21 +14,23 @@ export const onRequestPost: PagesFunction = (ctx) =>
     if (!model || !Array.isArray(messages) || messages.length === 0)
       return badRequest("Provide a model and at least one message.");
 
-    const upstream = await fetch(`${KIE_BASE}/chat/completions`, {
+    const route = chatRoute(model);
+    if (!route)
+      return badRequest(`Unknown chat model "${model}". Check the model picker.`);
+
+    const upstream = await fetch(`${KIE_CHAT_BASE}${route.path}`, {
       method: "POST",
       headers: kieHeaders(key),
-      body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048 }),
+      body: JSON.stringify(buildChatBody(route, model, messages)),
     });
 
-    // Pass kie.ai's error body through verbatim — it carries credit / rate-limit info.
     if (!upstream.ok) {
       return withCors(new Response(await upstream.text(), { status: upstream.status }));
     }
 
     // kie.ai sometimes wraps errors in HTTP 200 with a JSON body
-    // (e.g. {"code":401,"msg":"Unauthorized …"}). Detect this by
-    // checking Content-Type: a real SSE stream is text/event-stream,
-    // while an error payload arrives as application/json.
+    // (e.g. {"code":401,"msg":"Unauthorized …"}). A real SSE stream is
+    // text/event-stream; an error payload arrives as application/json.
     const ct = upstream.headers.get("Content-Type") ?? "";
     if (!ct.includes("text/event-stream")) {
       const text = await upstream.text();
@@ -39,7 +44,11 @@ export const onRequestPost: PagesFunction = (ctx) =>
 
     return withCors(
       new Response(upstream.body, {
-        headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "X-Chat-Protocol": route.protocol,
+        },
       })
     );
   });

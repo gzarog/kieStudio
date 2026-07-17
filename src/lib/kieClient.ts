@@ -50,7 +50,7 @@ export function streamChat(
   messages: { role: string; content: string }[],
   signal?: AbortSignal
 ) {
-  return fetch("/api/chat/stream", {
+  return fetch("/api/chat/completions", {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ model, messages }),

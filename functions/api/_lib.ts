@@ -1,17 +1,24 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// kie.ai endpoint contracts (base: https://api.kie.ai/api/v1)
+// kie.ai endpoint contracts
 //
-// VERIFIED against KIE-API-VERIFIED.md (docs.kie.ai, 2026-07-09).
+// VERIFIED against docs.kie.ai OpenAPI specs (2026-07-17).
 //
-// Unified Jobs API (all Market models — image, most video, TTS, …):
+// Unified Jobs API (base: https://api.kie.ai/api/v1 — all Market models):
 //   Submit:  POST /jobs/createTask   body { model, input, callBackUrl? } → { code, msg, data:{ taskId } }
 //   Poll:    GET  /jobs/recordInfo?taskId=<id>
 //            data.state ∈ waiting | queuing | generating | success | fail   (LOWERCASE)
-//            data.resultJson is a STRINGIFIED JSON — JSON.parse it, read resultUrls[]
-//            generated URLs may expire in as little as 24h; account media retention 14d
+//            data.resultJson is a STRINGIFIED JSON → parse, read resultUrls[]
 //
-// Dedicated routers (kept separate — verified distinct contracts):
-//   Chat:  POST /chat/completions           (OpenAI-compatible SSE)
+// Chat (base: https://api.kie.ai — note: NO /api/v1 prefix):
+//   Each model family has its own path and SSE protocol:
+//     Claude    → POST /claude/v1/messages         (Anthropic Messages SSE)
+//     Gemini    → POST /<slug>/v1/chat/completions  (OpenAI chat completions SSE)
+//     GPT-5.2   → POST /gpt-5-2/v1/chat/completions (OpenAI chat completions SSE)
+//     GPT-5.4+  → POST /codex/v1/responses          (OpenAI Responses SSE)
+//     GPT Codex → POST /api/v1/responses             (OpenAI Responses SSE)
+//     Grok      → POST /grok/v1/responses            (OpenAI Responses SSE)
+//
+// Dedicated routers (base: https://api.kie.ai/api/v1):
 //   Suno:  POST /generate + GET /generate/record-info
 //          extras: /generate/extend, /generate/upload-cover, /vocal-removal/*,
 //          /wav/*, /lyrics/*, /style/*, /mp4/*,
@@ -30,6 +37,71 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const KIE_BASE = "https://api.kie.ai/api/v1";
+export const KIE_CHAT_BASE = "https://api.kie.ai";
+
+// ── Chat routing ─────────────────────────────────────────────────────────────
+//
+// Three SSE protocols coexist on kie.ai. The Worker maps each model to the
+// correct path + protocol so the frontend can parse all of them uniformly.
+
+export type ChatProtocol = "anthropic" | "openai" | "responses";
+
+export interface ChatRoute {
+  path: string;
+  protocol: ChatProtocol;
+}
+
+const CHAT_ROUTES: Record<string, ChatRoute> = {
+  // Claude — Anthropic Messages (/claude/v1/messages)
+  "claude-opus-4-8":   { path: "/claude/v1/messages", protocol: "anthropic" },
+  "claude-opus-4-7":   { path: "/claude/v1/messages", protocol: "anthropic" },
+  "claude-opus-4-6":   { path: "/claude/v1/messages", protocol: "anthropic" },
+  "claude-opus-4-5":   { path: "/claude/v1/messages", protocol: "anthropic" },
+  "claude-sonnet-5":   { path: "/claude/v1/messages", protocol: "anthropic" },
+  "claude-sonnet-4-6": { path: "/claude/v1/messages", protocol: "anthropic" },
+  "claude-sonnet-4-5": { path: "/claude/v1/messages", protocol: "anthropic" },
+  "claude-haiku-4-5":  { path: "/claude/v1/messages", protocol: "anthropic" },
+  "claude-fable-5":    { path: "/claude/v1/messages", protocol: "anthropic" },
+
+  // Gemini — OpenAI chat completions (per-model slug paths)
+  "gemini-2.5-pro":   { path: "/gemini-2.5-pro/v1/chat/completions",   protocol: "openai" },
+  "gemini-3-pro":     { path: "/gemini-3-pro/v1/chat/completions",     protocol: "openai" },
+  "gemini-3-1-pro":   { path: "/gemini-3.1-pro/v1/chat/completions",   protocol: "openai" },
+  "gemini-2-5-flash": { path: "/gemini-2.5-flash/v1/chat/completions", protocol: "openai" },
+  "gemini-3-flash":   { path: "/gemini-3-flash/v1/chat/completions",   protocol: "openai" },
+  "gemini-3-5-flash": { path: "/gemini-3-5-flash-openai/v1/chat/completions", protocol: "openai" },
+
+  // GPT — mixed: 5.2 uses chat completions, 5.4+ / codex use Responses
+  "gpt-4o":       { path: "/gpt-5-2/v1/chat/completions", protocol: "openai" },
+  "gpt-5-2":      { path: "/gpt-5-2/v1/chat/completions", protocol: "openai" },
+  "gpt-5-4":      { path: "/codex/v1/responses",          protocol: "responses" },
+  "gpt-5-5":      { path: "/codex/v1/responses",          protocol: "responses" },
+  "gpt-5-codex":  { path: "/api/v1/responses",             protocol: "responses" },
+
+  // Grok — OpenAI Responses
+  "grok-4-3": { path: "/grok/v1/responses", protocol: "responses" },
+  "grok-4-5": { path: "/grok/v1/responses", protocol: "responses" },
+};
+
+export function chatRoute(modelId: string): ChatRoute | undefined {
+  return CHAT_ROUTES[modelId];
+}
+
+export function buildChatBody(
+  route: ChatRoute,
+  model: string,
+  messages: unknown[],
+  maxTokens = 2048,
+): Record<string, unknown> {
+  switch (route.protocol) {
+    case "anthropic":
+      return { model, messages, stream: true, max_tokens: maxTokens };
+    case "openai":
+      return { model, messages, stream: true, max_tokens: maxTokens };
+    case "responses":
+      return { model, input: messages, stream: true };
+  }
+}
 
 // ── Unified Jobs API ─────────────────────────────────────────────────────────
 

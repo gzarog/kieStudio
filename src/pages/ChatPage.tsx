@@ -5,6 +5,7 @@ import { requestKey, toast } from "../lib/ui";
 import { ModelPicker } from "../components/shared/ModelPicker";
 import { defaultModel } from "../lib/types";
 import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
+import { extractDelta } from "../lib/chatStream";
 import type { ChatMessage } from "../lib/types";
 
 const STORE_KEY = "kie_chat_history";
@@ -92,7 +93,7 @@ export function ChatPage() {
           if (!t.startsWith("data:") || t.includes("[DONE]")) continue;
           try {
             const j = JSON.parse(t.slice(5));
-            const delta = j.choices?.[0]?.delta?.content ?? "";
+            const delta = extractDelta(j);
             if (delta) {
               assistant += delta;
               setMessages([...next, { role: "assistant", content: assistant }]);

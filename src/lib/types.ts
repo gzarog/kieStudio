@@ -86,11 +86,10 @@ export interface CatalogModel {
 // several ids differ from their doc slug (dots vs dashes, provider prefixes,
 // corrected "cluade" typos), so each was confirmed against the page body.
 export const MODEL_CATALOG: CatalogModel[] = [
-  // ── Chat (dedicated /chat/completions router — OpenAI-compatible) ──
-  // The router forwards any `model` id verbatim; ids below are copied from each
-  // model's docs.kie.ai page (dashed forms; "cluade" slug typos corrected).
+  // ── Chat (per-model dedicated routers — Anthropic / OpenAI / Responses) ──
+  // Each model id is copied from its docs.kie.ai page; the Worker routes to the
+  // correct path and protocol (see CHAT_ROUTES in functions/api/_lib.ts).
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gpt-4o", label: "GPT-4o", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   // Phase 5 chat expansion
   { id: "claude-opus-4-8", label: "Claude Opus 4.8", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
@@ -104,7 +103,7 @@ export const MODEL_CATALOG: CatalogModel[] = [
   { id: "gpt-5-5", label: "GPT-5.5", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gpt-5-4", label: "GPT-5.4", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gpt-5-2", label: "GPT-5.2", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gpt-codex", label: "GPT Codex", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "gpt-5-codex", label: "GPT Codex", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gemini-3-pro", label: "Gemini 3 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gemini-3-1-pro", label: "Gemini 3.1 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
   { id: "gemini-3-flash", label: "Gemini 3 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
