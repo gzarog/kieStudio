@@ -63,6 +63,19 @@ export type VideoField = "video_urls" | "video_url";
 
 const VIDEO_ARRAY_FIELDS: ReadonlySet<VideoField> = new Set(["video_urls"]);
 
+/**
+ * One user-facing generation option (duration / resolution / aspect ratio / …).
+ * `field` is the EXACT `input` key the model documents; `values` carry the
+ * documented enum with its documented type (string vs number is significant —
+ * e.g. Hailuo wants duration "6" while Seedance wants duration 5).
+ */
+export interface VideoOption {
+  field: string;
+  label: string;
+  values: readonly (string | number)[];
+  default: string | number;
+}
+
 export interface CatalogModel {
   id: string;
   label: string;
@@ -79,6 +92,12 @@ export interface CatalogModel {
   videoField?: VideoField;
   /** The model works without a text prompt (e.g. background removal). */
   promptOptional?: boolean;
+  /** The model takes no prompt at all (e.g. Topaz upscale) — never send one. */
+  noPrompt?: boolean;
+  /** Selectable generation options, verified per doc page. */
+  options?: VideoOption[];
+  /** Constant `input` fields the API requires (e.g. Kling's `sound`/`multi_shots`). */
+  fixedInput?: Record<string, unknown>;
 }
 
 // Every `id` below is copied verbatim from the model's docs.kie.ai page (or
@@ -159,58 +178,210 @@ export const MODEL_CATALOG: CatalogModel[] = [
   { id: "wan/2-7-image", label: "Wan 2.7 Image", provider: "Wan", category: "image", capabilities: ["t2i", "i2i"], verified: true, inputs: ["image"], imageField: "input_urls" },
 
   // ── Video (Unified Jobs API, except Veo which keeps its dedicated router) ──
-  { id: "veo-3.1", label: "Veo 3.1", provider: "Google", category: "video", capabilities: ["t2v", "i2v"], verified: true, dedicated: true, inputs: ["resolution", "duration", "image"], imageField: "imageUrls" },
-  { id: "kling-3.0", label: "Kling 3.0", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["resolution", "duration"] },
-  { id: "seedance-2.0", label: "Seedance 2.0", provider: "ByteDance", category: "video", capabilities: ["t2v"], verified: true, inputs: ["resolution", "duration"] },
-  { id: "kling-2.6/image-to-video", label: "Kling 2.6 (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls" },
-  { id: "gemini-omni-video", label: "Gemini Omni Video", provider: "Google", category: "video", capabilities: ["t2v"], verified: true, inputs: ["duration"] },
-  { id: "bytedance/v1-pro-text-to-video", label: "ByteDance V1 Pro (T2V)", provider: "ByteDance", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "bytedance/v1-pro-image-to-video", label: "ByteDance V1 Pro (I2V)", provider: "ByteDance", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
-  { id: "bytedance/v1-lite-text-to-video", label: "ByteDance V1 Lite (T2V)", provider: "ByteDance", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "bytedance/v1-lite-image-to-video", label: "ByteDance V1 Lite (I2V)", provider: "ByteDance", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
-  { id: "hailuo/2-3-image-to-video-pro", label: "Hailuo 2.3 Pro (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
-  { id: "hailuo/2-3-image-to-video-standard", label: "Hailuo 2.3 Std (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
+  //
+  // Every `options` enum below is copied from the model's docs.kie.ai page
+  // (fetched 2026-07-17) and cross-checked live against /jobs/createTask
+  // validation errors. Value TYPES are significant: Hailuo/Kling/Wan-2.5/2.6
+  // document duration as a string enum, Seedance/Wan-2.7/HappyHorse/Grok/Veo
+  // as a number. `fixedInput` carries required constants the UI doesn't expose.
+  //
+  // The /veo/generate router's `model` enum is veo3 | veo3_fast | veo3_lite —
+  // there is no 3.1 value. `veo-3.1` is kept as the routing id (history compat)
+  // and the worker maps it to `veo3_fast`, which is what the API was already
+  // defaulting to; the quality tier is a separate entry.
+  { id: "veo-3.1", label: "Veo 3 Fast", provider: "Google", category: "video", capabilities: ["t2v", "i2v"], verified: true, dedicated: true, inputs: ["resolution", "duration", "image"], imageField: "imageUrls",
+    options: [
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "Auto"], default: "16:9" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p", "4k"], default: "720p" },
+      { field: "duration", label: "Duration", values: [4, 6, 8], default: 8 },
+    ] },
+  { id: "veo3", label: "Veo 3 (Quality)", provider: "Google", category: "video", capabilities: ["t2v", "i2v"], verified: true, dedicated: true, inputs: ["resolution", "duration", "image"], imageField: "imageUrls",
+    options: [
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "Auto"], default: "16:9" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p", "4k"], default: "720p" },
+      { field: "duration", label: "Duration", values: [4, 6, 8], default: 8 },
+    ] },
+  { id: "kling-3.0", label: "Kling 3.0", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["resolution", "duration"],
+    options: [
+      { field: "duration", label: "Duration", values: ["3", "5", "8", "10", "12", "15"], default: "5" },
+      { field: "mode", label: "Mode", values: ["std", "pro", "4K"], default: "std" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1"], default: "16:9" },
+    ],
+    fixedInput: { multi_shots: false, sound: false } },
+  { id: "seedance-2.0", label: "Seedance 2.0", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["resolution", "duration", "image"], imageField: "first_frame_url",
+    options: [
+      { field: "duration", label: "Duration", values: [4, 5, 8, 10, 12, 15], default: 5 },
+      { field: "resolution", label: "Resolution", values: ["480p", "720p", "1080p", "4k"], default: "720p" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], default: "16:9" },
+    ] },
+  { id: "kling-2.6/image-to-video", label: "Kling 2.6 (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls",
+    options: [{ field: "duration", label: "Duration", values: ["5", "10"], default: "5" }],
+    fixedInput: { sound: false } },
+  { id: "gemini-omni-video", label: "Gemini Omni Video", provider: "Google", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls",
+    options: [
+      { field: "duration", label: "Duration", values: ["4", "6", "8", "10"], default: "8" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16"], default: "16:9" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p", "4k"], default: "720p" },
+    ] },
+  // (ByteDance V1 Pro/Lite removed 2026-07-17: kie.ai returns "Server exception"
+  //  for every request against them and their doc pages are gone.)
+  { id: "hailuo/2-3-image-to-video-pro", label: "Hailuo 2.3 Pro (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url",
+    options: [
+      { field: "duration", label: "Duration", values: ["6", "10"], default: "6" },
+      { field: "resolution", label: "Resolution", values: ["768P", "1080P"], default: "768P" },
+    ] },
+  { id: "hailuo/2-3-image-to-video-standard", label: "Hailuo 2.3 Std (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url",
+    options: [
+      { field: "duration", label: "Duration", values: ["6", "10"], default: "6" },
+      { field: "resolution", label: "Resolution", values: ["768P", "1080P"], default: "768P" },
+    ] },
   { id: "hailuo/02-text-to-video-pro", label: "Hailuo 02 Pro (T2V)", provider: "Hailuo", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "hailuo/02-text-to-video-standard", label: "Hailuo 02 Std (T2V)", provider: "Hailuo", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "hailuo/02-image-to-video-pro", label: "Hailuo 02 Pro (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
-  { id: "hailuo/02-image-to-video-standard", label: "Hailuo 02 Std (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"] },
-  { id: "wan/2-5-text-to-video", label: "Wan 2.5 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "wan/2-5-image-to-video", label: "Wan 2.5 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
+  { id: "hailuo/02-text-to-video-standard", label: "Hailuo 02 Std (T2V)", provider: "Hailuo", category: "video", capabilities: ["t2v"], verified: true,
+    options: [{ field: "duration", label: "Duration", values: ["6", "10"], default: "6" }] },
+  { id: "hailuo/02-image-to-video-pro", label: "Hailuo 02 Pro (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
+  { id: "hailuo/02-image-to-video-standard", label: "Hailuo 02 Std (I2V)", provider: "Hailuo", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url",
+    options: [
+      { field: "duration", label: "Duration", values: ["6", "10"], default: "10" },
+      { field: "resolution", label: "Resolution", values: ["512P", "768P"], default: "768P" },
+    ] },
+  { id: "wan/2-5-text-to-video", label: "Wan 2.5 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true,
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10"], default: "5" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "720p" },
+    ] },
+  { id: "wan/2-5-image-to-video", label: "Wan 2.5 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url",
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10"], default: "5" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "720p" },
+    ] },
 
   // ── Video · Phase 2 catalog expansion (ids/imageField verified per doc page) ──
   // Text-to-video
-  { id: "kling-2.6/text-to-video", label: "Kling 2.6 (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["duration"] },
-  { id: "kling/v3-turbo-text-to-video", label: "Kling V3 Turbo (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["resolution", "duration"] },
-  { id: "kling/v2-5-turbo-text-to-video-pro", label: "Kling V2.5 Turbo Pro (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["duration"] },
-  { id: "kling/v2-1-master-text-to-video", label: "Kling V2.1 Master (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "wan/2-6-text-to-video", label: "Wan 2.6 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "wan/2-7-text-to-video", label: "Wan 2.7 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "grok-imagine/text-to-video", label: "Grok Imagine (T2V)", provider: "xAI", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "bytedance/seedance-2-fast", label: "Seedance 2.0 Fast", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url" },
-  { id: "happyhorse/text-to-video", label: "HappyHorse (T2V)", provider: "HappyHorse", category: "video", capabilities: ["t2v"], verified: true },
-  { id: "happyhorse-1-1/text-to-video", label: "HappyHorse 1.1 (T2V)", provider: "HappyHorse", category: "video", capabilities: ["t2v"], verified: true },
+  { id: "kling-2.6/text-to-video", label: "Kling 2.6 (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["duration"],
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10"], default: "5" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1"], default: "16:9" },
+    ],
+    fixedInput: { sound: false } },
+  { id: "kling/v3-turbo-text-to-video", label: "Kling V3 Turbo (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["resolution", "duration"],
+    options: [
+      { field: "duration", label: "Duration", values: ["3", "5", "8", "10", "12", "15"], default: "5" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1"], default: "16:9" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "720p" },
+    ] },
+  { id: "kling/v2-5-turbo-text-to-video-pro", label: "Kling V2.5 Turbo Pro (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true, inputs: ["duration"],
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10"], default: "5" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1"], default: "16:9" },
+    ] },
+  { id: "kling/v2-1-master-text-to-video", label: "Kling V2.1 Master (T2V)", provider: "Kling", category: "video", capabilities: ["t2v"], verified: true,
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10"], default: "5" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1"], default: "16:9" },
+    ] },
+  { id: "wan/2-6-text-to-video", label: "Wan 2.6 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true,
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10", "15"], default: "5" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+    ] },
+  { id: "wan/2-7-text-to-video", label: "Wan 2.7 (T2V)", provider: "Wan", category: "video", capabilities: ["t2v"], verified: true,
+    options: [
+      { field: "duration", label: "Duration", values: [5, 8, 10, 15], default: 5 },
+      { field: "ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1", "4:3", "3:4"], default: "16:9" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+    ] },
+  { id: "grok-imagine/text-to-video", label: "Grok Imagine (T2V)", provider: "xAI", category: "video", capabilities: ["t2v"], verified: true,
+    options: [
+      { field: "duration", label: "Duration", values: [6, 10, 15], default: 6 },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1", "2:3", "3:2"], default: "16:9" },
+      { field: "resolution", label: "Resolution", values: ["480p", "720p"], default: "480p" },
+    ] },
+  { id: "bytedance/seedance-2-fast", label: "Seedance 2.0 Fast", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url",
+    options: [
+      { field: "duration", label: "Duration", values: [4, 5, 8, 10, 12, 15], default: 5 },
+      { field: "resolution", label: "Resolution", values: ["480p", "720p"], default: "720p" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], default: "16:9" },
+    ] },
+  { id: "happyhorse/text-to-video", label: "HappyHorse (T2V)", provider: "HappyHorse", category: "video", capabilities: ["t2v"], verified: true,
+    options: [
+      { field: "duration", label: "Duration", values: [3, 5, 8, 10, 15], default: 5 },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1", "4:3", "3:4"], default: "16:9" },
+    ] },
+  { id: "happyhorse-1-1/text-to-video", label: "HappyHorse 1.1 (T2V)", provider: "HappyHorse", category: "video", capabilities: ["t2v"], verified: true,
+    options: [
+      { field: "duration", label: "Duration", values: [3, 5, 8, 10, 15], default: 5 },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1", "4:3", "3:4"], default: "16:9" },
+    ] },
   // Image-to-video (source image field verified — array vs single per provider)
-  { id: "kling/v3-turbo-image-to-video", label: "Kling V3 Turbo (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls" },
-  { id: "kling/v2-5-turbo-image-to-video-pro", label: "Kling V2.5 Turbo Pro (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_url" },
-  { id: "kling/v2-1-master-image-to-video", label: "Kling V2.1 Master (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
-  { id: "kling/v2-1-pro", label: "Kling V2.1 Pro (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
-  { id: "kling/v2-1-standard", label: "Kling V2.1 Standard (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
+  { id: "kling/v3-turbo-image-to-video", label: "Kling V3 Turbo (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls",
+    options: [
+      { field: "duration", label: "Duration", values: ["3", "5", "8", "10", "12", "15"], default: "5" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "720p" },
+    ] },
+  { id: "kling/v2-5-turbo-image-to-video-pro", label: "Kling V2.5 Turbo Pro (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_url",
+    options: [{ field: "duration", label: "Duration", values: ["5", "10"], default: "5" }] },
+  { id: "kling/v2-1-master-image-to-video", label: "Kling V2.1 Master (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url",
+    options: [{ field: "duration", label: "Duration", values: ["5", "10"], default: "5" }] },
+  { id: "kling/v2-1-pro", label: "Kling V2.1 Pro (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url",
+    options: [{ field: "duration", label: "Duration", values: ["5", "10"], default: "5" }] },
+  { id: "kling/v2-1-standard", label: "Kling V2.1 Standard (I2V)", provider: "Kling", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url",
+    options: [{ field: "duration", label: "Duration", values: ["5", "10"], default: "5" }] },
   { id: "bytedance/v1-pro-fast-image-to-video", label: "ByteDance V1 Pro Fast (I2V)", provider: "ByteDance", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_url" },
-  { id: "bytedance/seedance-1.5-pro", label: "Seedance 1.5 Pro", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "input_urls" },
-  { id: "grok-imagine/image-to-video", label: "Grok Imagine (I2V)", provider: "xAI", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls" },
-  { id: "wan/2-6-image-to-video", label: "Wan 2.6 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls" },
-  { id: "wan/2-6-flash-image-to-video", label: "Wan 2.6 Flash (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls" },
-  { id: "happyhorse-1-1/image-to-video", label: "HappyHorse 1.1 (I2V)", provider: "HappyHorse", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls" },
+  { id: "bytedance/seedance-1.5-pro", label: "Seedance 1.5 Pro", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "input_urls",
+    options: [
+      { field: "duration", label: "Duration", values: [4, 5, 8, 10, 12], default: 5 },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], default: "16:9" },
+      { field: "resolution", label: "Resolution", values: ["480p", "720p", "1080p"], default: "720p" },
+    ] },
+  { id: "grok-imagine/image-to-video", label: "Grok Imagine (I2V)", provider: "xAI", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls", promptOptional: true,
+    options: [{ field: "resolution", label: "Resolution", values: ["480p", "720p"], default: "480p" }] },
+  { id: "wan/2-6-image-to-video", label: "Wan 2.6 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["duration", "image"], imageField: "image_urls",
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10", "15"], default: "5" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+    ] },
+  { id: "wan/2-6-flash-image-to-video", label: "Wan 2.6 Flash (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls",
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10", "15"], default: "5" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+    ],
+    fixedInput: { audio: false } },
+  { id: "happyhorse-1-1/image-to-video", label: "HappyHorse 1.1 (I2V)", provider: "HappyHorse", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "image_urls", promptOptional: true,
+    options: [
+      { field: "duration", label: "Duration", values: [3, 5, 8, 10, 15], default: 5 },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+    ] },
 
   // ── Video · Phase 3: extra image-to-video (first_frame_url) + video-to-video ──
   // I2V models whose source frame goes in `first_frame_url` (single string)
-  { id: "wan/2-7-image-to-video", label: "Wan 2.7 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url" },
-  { id: "bytedance/seedance-2-mini", label: "Seedance 2.0 Mini", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url" },
+  { id: "wan/2-7-image-to-video", label: "Wan 2.7 (I2V)", provider: "Wan", category: "video", capabilities: ["i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url",
+    options: [
+      { field: "duration", label: "Duration", values: [5, 8, 10, 15], default: 5 },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+    ] },
+  { id: "bytedance/seedance-2-mini", label: "Seedance 2.0 Mini", provider: "ByteDance", category: "video", capabilities: ["t2v", "i2v"], verified: true, inputs: ["image"], imageField: "first_frame_url",
+    options: [
+      { field: "duration", label: "Duration", values: [4, 5, 8, 10, 12, 15], default: 5 },
+      { field: "resolution", label: "Resolution", values: ["480p", "720p"], default: "720p" },
+      { field: "aspect_ratio", label: "Aspect ratio", values: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], default: "16:9" },
+    ] },
   // Video-to-video / video-edit / upscale — source video field verified per doc
-  { id: "wan/2-6-video-to-video", label: "Wan 2.6 (V2V)", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_urls" },
-  { id: "wan/2-6-flash-video-to-video", label: "Wan 2.6 Flash (V2V)", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_urls" },
-  { id: "wan/2-7-videoedit", label: "Wan 2.7 Video Edit", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_url", promptOptional: true },
-  { id: "topaz/video-upscale", label: "Topaz Video Upscale", provider: "Topaz", category: "video", capabilities: ["upscale", "v2v"], verified: true, inputs: ["video"], videoField: "video_url", promptOptional: true },
+  { id: "wan/2-6-video-to-video", label: "Wan 2.6 (V2V)", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_urls",
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10"], default: "5" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+    ] },
+  { id: "wan/2-6-flash-video-to-video", label: "Wan 2.6 Flash (V2V)", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_urls",
+    options: [
+      { field: "duration", label: "Duration", values: ["5", "10"], default: "5" },
+      { field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" },
+    ] },
+  { id: "wan/2-7-videoedit", label: "Wan 2.7 Video Edit", provider: "Wan", category: "video", capabilities: ["v2v"], verified: true, inputs: ["video"], videoField: "video_url", promptOptional: true,
+    options: [{ field: "resolution", label: "Resolution", values: ["720p", "1080p"], default: "1080p" }] },
+  { id: "topaz/video-upscale", label: "Topaz Video Upscale", provider: "Topaz", category: "video", capabilities: ["upscale", "v2v"], verified: true, inputs: ["video"], videoField: "video_url", promptOptional: true, noPrompt: true,
+    options: [{ field: "upscale_factor", label: "Upscale factor", values: ["1", "2", "4"], default: "2" }] },
 
   // ── Speech / TTS (Unified Jobs API — via the generic /api/jobs proxy) ──
   { id: "elevenlabs/text-to-speech-turbo-2-5", label: "ElevenLabs Turbo 2.5", provider: "ElevenLabs", category: "speech", capabilities: ["tts"], verified: true },
@@ -303,4 +474,29 @@ export function videoInputFor(modelId: string, url: string): Record<string, unkn
 /** The first model of a category — the sensible default selection. */
 export function defaultModel(category: ModelCategory): string {
   return catalogByCategory(category)[0]?.id ?? "";
+}
+
+/** Default option selections for a model, as select-friendly strings. */
+export function optionDefaults(modelId: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const o of catalogModel(modelId)?.options ?? []) out[o.field] = String(o.default);
+  return out;
+}
+
+/**
+ * Build the option fragment of `input` for a model: the API-required constants
+ * (`fixedInput`) plus each selected option coerced back to its documented type
+ * (string vs number enums differ per provider).
+ */
+export function optionInputFor(
+  modelId: string,
+  selected: Record<string, string> = {}
+): Record<string, unknown> {
+  const m = catalogModel(modelId);
+  const out: Record<string, unknown> = { ...(m?.fixedInput ?? {}) };
+  for (const o of m?.options ?? []) {
+    const raw = selected[o.field] ?? String(o.default);
+    out[o.field] = typeof o.values[0] === "number" ? Number(raw) : raw;
+  }
+  return out;
 }

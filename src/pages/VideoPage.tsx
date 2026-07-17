@@ -9,7 +9,10 @@ import { FileDrop } from "../components/shared/FileDrop";
 import { ExpiryBadge } from "../components/shared/ExpiryBadge";
 import { loadHistory, saveHistory } from "../lib/history";
 import { uploadFile } from "../lib/upload";
-import { defaultModel, imageCapableModels, imageInputFor, videoCapableModels, videoInputFor, catalogModel } from "../lib/types";
+import {
+  defaultModel, imageCapableModels, imageInputFor, videoCapableModels, videoInputFor,
+  catalogModel, optionDefaults, optionInputFor,
+} from "../lib/types";
 import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
 
 type Mode = "t2v" | "i2v" | "v2v";
@@ -22,8 +25,8 @@ export function VideoPage() {
   const [model, setModel] = useState<string>(defaultModel("video"));
   const [i2vModel, setI2vModel] = useState<string>(imageCapableModels("video")[0]?.id ?? "");
   const [v2vModel, setV2vModel] = useState<string>(videoCapableModels("video")[0]?.id ?? "");
-  const [resolution, setResolution] = useState("1080p");
-  const [duration, setDuration] = useState(5);
+  // Selected generation options for the active model (field → raw select value).
+  const [opts, setOpts] = useState<Record<string, string>>({});
   const [sourceUrl, setSourceUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [history, setHistory] = useState<VideoItem[]>(() => loadHistory<VideoItem>("video"));
@@ -64,8 +67,13 @@ export function VideoPage() {
   const isV2v = mode === "v2v";
   const needsUpload = isI2v || isV2v;
   const activeModel = isV2v ? v2vModel : isI2v ? i2vModel : model;
-  // Some v2v models (video edit / upscale) run without a text prompt.
-  const promptOptional = isV2v && !!catalogModel(v2vModel)?.promptOptional;
+  const activeCatalog = catalogModel(activeModel);
+
+  // Reset the option selections to the model's documented defaults on switch.
+  useEffect(() => setOpts(optionDefaults(activeModel)), [activeModel]);
+
+  // Some models (video edit / upscale / promptless i2v) run without a prompt.
+  const promptOptional = !!activeCatalog?.promptOptional || !!activeCatalog?.noPrompt;
   const canGenerate = needsUpload
     ? !!sourceUrl && (promptOptional || !!prompt.trim())
     : !!prompt.trim();
@@ -74,18 +82,19 @@ export function VideoPage() {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
     lastPrompt.current = prompt;
     try {
-      // i2v models document duration as a string enum ("5" | "10"); t2v keeps
-      // the existing numeric field the dedicated/Jobs routes already accept.
-      // v2v carries only the source video URL (per-model field) plus the prompt.
-      const body = isV2v
-        ? { prompt, model: v2vModel, input: videoInputFor(v2vModel, sourceUrl) }
+      // One payload shape for every mode: options (typed per the model's doc,
+      // plus API-required constants) and the uploaded source's per-model field
+      // all ride inside `input`. Models that take no prompt never get one.
+      const source = isV2v
+        ? videoInputFor(v2vModel, sourceUrl)
         : isI2v
-        ? {
-            prompt,
-            model: i2vModel,
-            input: { duration: String(duration), ...imageInputFor(i2vModel, sourceUrl) },
-          }
-        : { prompt, model, resolution, duration };
+        ? imageInputFor(i2vModel, sourceUrl)
+        : {};
+      const body = {
+        prompt: activeCatalog?.noPrompt ? "" : prompt,
+        model: activeModel,
+        input: { ...optionInputFor(activeModel, opts), ...source },
+      };
       const { taskId } = await postToWorker<{ taskId: string }>("/video", body);
       startPolling(taskId, { model: activeModel });
     } catch (e) { toast(e instanceof Error ? e.message : String(e), "error"); }
@@ -131,26 +140,22 @@ export function VideoPage() {
         {isV2v ? (
           <ModelPicker category="video" requireVideo value={v2vModel} onChange={setV2vModel} />
         ) : isI2v ? (
-          <>
-            <ModelPicker category="video" requireImage value={i2vModel} onChange={setI2vModel} />
-            <select value={duration} onChange={(e) => setDuration(Number(e.target.value))}
-              className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
-              <option value={5}>5s</option><option value={8}>8s</option><option value={10}>10s</option>
-            </select>
-          </>
+          <ModelPicker category="video" requireImage value={i2vModel} onChange={setI2vModel} />
         ) : (
-          <>
-            <ModelPicker category="video" capability="t2v" value={model} onChange={setModel} />
-            <select value={resolution} onChange={(e) => setResolution(e.target.value)}
-              className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
-              <option>720p</option><option>1080p</option>
-            </select>
-            <select value={duration} onChange={(e) => setDuration(Number(e.target.value))}
-              className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
-              <option value={5}>5s</option><option value={8}>8s</option><option value={10}>10s</option>
-            </select>
-          </>
+          <ModelPicker category="video" capability="t2v" value={model} onChange={setModel} />
         )}
+        {/* Only the options this model documents, with its exact allowed values. */}
+        {(activeCatalog?.options ?? []).map((o) => (
+          <select key={o.field} aria-label={o.label} value={opts[o.field] ?? String(o.default)}
+            onChange={(e) => setOpts((s) => ({ ...s, [o.field]: e.target.value }))}
+            className="bg-surface border border-edge text-white text-sm rounded-lg px-3 py-2">
+            {o.values.map((v) => (
+              <option key={String(v)} value={String(v)}>
+                {o.field === "duration" ? `${v}s` : String(v)}
+              </option>
+            ))}
+          </select>
+        ))}
         <button onClick={generate} disabled={!canGenerate || status === "pending" || uploading}
           className="ml-auto px-5 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-xl text-sm font-medium">
           Generate

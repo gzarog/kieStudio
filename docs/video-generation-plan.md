@@ -1,5 +1,19 @@
 # Video Generation — Audit & Implementation Plan
 
+> **Status update (2026-07-17, same day):** Phases 1–4 are implemented on this
+> branch, and the findings below were re-verified LIVE against api.kie.ai with
+> a user key. Live results: all 43 catalog model ids are recognized by
+> createTask **except** the four ByteDance V1 Pro/Lite models, which return
+> "Server exception" on every request (removed from the catalog); F1/F2/F5
+> were confirmed as real request failures (`wan/2-5` → "duration is required",
+> `hailuo/02` → "Invalid parameter", Kling family → missing required
+> `sound`/`mode`/`multi_shots`); the fixed payloads for 12 representative
+> models + Veo all pass schema validation (blocked only by the test account's
+> credit balance, which is too low to run a full generation — Phase 5's paid
+> smoke run remains open). Also learned live: kie.ai **charges at task
+> creation**, and `grok-imagine/image-to-video` accepts an empty input — the
+> UI must keep guarding against accidental submits.
+
 **Date:** 2026-07-17
 **Scope:** Every video generation option reachable from the 🎬 Video page — 3 modes
 (T2V / I2V / V2V) × 40 catalog models — plus the `/api/video` worker.
