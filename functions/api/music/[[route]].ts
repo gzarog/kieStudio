@@ -1,5 +1,6 @@
 import {
   KIE_BASE, userKey, kieHeaders, noKey, badRequest, json, guard, normalizeStatus,
+  readTaskId,
 } from "../_lib";
 
 export { onRequestOptions } from "../_lib";
@@ -40,8 +41,10 @@ export const onRequestPost: PagesFunction = (ctx) =>
       body: JSON.stringify(body),
     });
     if (!res.ok) return json({ error: await res.text() }, res.status);
-    const data = await res.json<{ data: { taskId: string } }>();
-    return json({ taskId: data.data.taskId });
+    const envelope = await res.json<{ code?: number; msg?: string; data?: { taskId?: string } | null }>();
+    const tid = readTaskId(envelope);
+    if (tid instanceof Response) return tid;
+    return json({ taskId: tid.taskId });
   });
 
 export const onRequestGet: PagesFunction = (ctx) =>
@@ -56,9 +59,10 @@ export const onRequestGet: PagesFunction = (ctx) =>
       headers: kieHeaders(key),
     });
     const data = await res.json<{
-      data: { status?: string; state?: string; successFlag?: number; errorMessage?: string; response?: { sunoData: unknown[] } };
+      code?: number; msg?: string;
+      data?: { status?: string; state?: string; successFlag?: number; errorMessage?: string; response?: { sunoData: unknown[] } } | null;
     }>();
-
+    if (!data.data) return json({ status: "failed", result: null, error: data.msg ?? "Status unavailable" });
     const s = normalizeStatus(data.data);
     if (s === "success") return json({ status: "success", result: data.data.response?.sunoData ?? [] });
     if (s === "failed") return json({ status: "failed", result: null, error: data.data.errorMessage });

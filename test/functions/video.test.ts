@@ -49,6 +49,19 @@ describe("video submit (POST)", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("bad");
   });
+
+  it("surfaces kie.ai business error instead of crashing on null data", async () => {
+    mockFetchSequence(fetchResponse({ code: 422, msg: "Invalid parameter imageUrls", data: null }));
+    const res = await submit({ prompt: "clip", model: "veo-3.1" });
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("Invalid parameter imageUrls");
+  });
+
+  it("returns 502 when data exists but taskId is missing", async () => {
+    mockFetchSequence(fetchResponse({ code: 200, msg: "OK", data: {} }));
+    const res = await submit({ prompt: "clip", model: "kling-3.0" });
+    expect(res.status).toBe(502);
+  });
 });
 
 describe("video poll (GET) — Jobs models", () => {
@@ -80,6 +93,12 @@ describe("video poll (GET) — Jobs models", () => {
     mockFetchSequence(fetchResponse({ data: { state: "queuing" } }));
     const res = await poll("taskId=V1&model=kling-3.0");
     expect(await res.json()).toEqual({ status: "pending", result: null });
+  });
+
+  it("returns failed with kie.ai msg when data is null during poll", async () => {
+    mockFetchSequence(fetchResponse({ code: 500, msg: "Internal error", data: null }));
+    const res = await poll("taskId=V1&model=kling-3.0");
+    expect(await res.json()).toEqual({ status: "failed", result: null, error: "Internal error" });
   });
 });
 
@@ -113,5 +132,11 @@ describe("video poll (GET) — Veo dedicated router", () => {
     mockFetchSequence(fetchResponse({ data: { successFlag: 0 } }));
     const res = await poll("taskId=V1&model=veo-3.1");
     expect(await res.json()).toEqual({ status: "pending", result: null });
+  });
+
+  it("returns failed with kie.ai msg when data is null during Veo poll", async () => {
+    mockFetchSequence(fetchResponse({ code: 402, msg: "Insufficient credits", data: null }));
+    const res = await poll("taskId=V1&model=veo-3.1");
+    expect(await res.json()).toEqual({ status: "failed", result: null, error: "Insufficient credits" });
   });
 });

@@ -44,6 +44,13 @@ describe("image submit (POST)", () => {
     expect(res.status).toBe(429);
     expect((await res.json()).error).toBe("rate limited");
   });
+
+  it("surfaces kie.ai business error instead of crashing on null data", async () => {
+    mockFetchSequence(fetchResponse({ code: 402, msg: "Insufficient credits", data: null }));
+    const res = await submit({ prompt: "a cat", model: "gpt-image-2" });
+    expect(res.status).toBe(402);
+    expect((await res.json()).error).toBe("Insufficient credits");
+  });
 });
 
 describe("image poll (GET)", () => {
@@ -89,5 +96,11 @@ describe("image poll (GET)", () => {
     expect(fetchMock.mock.calls[0][0]).toBe(
       "https://api.kie.ai/api/v1/jobs/recordInfo?taskId=a%2Fb"
     );
+  });
+
+  it("returns failed with kie.ai msg when data is null during poll", async () => {
+    mockFetchSequence(fetchResponse({ code: 500, msg: "Internal error", data: null }));
+    const res = await poll("taskId=T1&model=gpt-image-2");
+    expect(await res.json()).toEqual({ status: "failed", result: null, error: "Internal error" });
   });
 });
