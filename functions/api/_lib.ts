@@ -185,6 +185,23 @@ export function uploadBase64(
   });
 }
 
+// ── Task-id extraction ──────────────────────────────────────────────────────
+//
+// kie.ai sometimes returns HTTP 200 with a business-error envelope:
+//   { code: 402|422|501, msg: "...", data: null }
+// Blindly reading `data.data.taskId` crashes with "Cannot read properties of
+// null". This helper extracts taskId safely and surfaces the real error.
+
+export function readTaskId(envelope: {
+  code?: number;
+  msg?: string;
+  data?: { taskId?: string } | null;
+}): Response | { taskId: string } {
+  if (envelope.data?.taskId) return { taskId: envelope.data.taskId };
+  const status = typeof envelope.code === "number" && envelope.code >= 400 ? envelope.code : 502;
+  return json({ error: envelope.msg ?? "Task not accepted (no taskId in response)." }, status);
+}
+
 // ── Auth / headers ───────────────────────────────────────────────────────────
 
 export function userKey(request: Request): string | null {

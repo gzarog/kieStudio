@@ -191,9 +191,10 @@ export const onRequestGet: PagesFunction = (ctx) =>
       headers: kieHeaders(key),
     });
     const data = await res.json<{
-      data: { status?: string; successFlag?: number | string; errorMessage?: string };
+      code?: number; msg?: string;
+      data?: { status?: string; successFlag?: number | string; errorMessage?: string } | null;
     }>();
-
+    if (!data.data) return json({ status: "failed", result: null, error: data.msg ?? "Status unavailable" });
     const s = normalizeStatus(data.data);
     if (s === "success") return json({ status: "success", result: route.pick(data.data) });
     if (s === "failed")

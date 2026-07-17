@@ -6,6 +6,7 @@
 import {
   userKey, kieHeaders, noKey, badRequest, json, guard,
   createJob, jobStatus, jobsModelId, normalizeStatus, parseJobResult,
+  readTaskId,
 } from "../_lib";
 
 export { onRequestOptions } from "../_lib";
@@ -25,8 +26,10 @@ export const onRequestPost: PagesFunction = (ctx) =>
 
     const res = await createJob(key, jobsModelId(b.model), b.input, b.callBackUrl);
     if (!res.ok) return json({ error: await res.text() }, res.status);
-    const data = await res.json<{ data: { taskId: string } }>();
-    return json({ taskId: data.data.taskId });
+    const envelope = await res.json<{ code?: number; msg?: string; data?: { taskId?: string } | null }>();
+    const tid = readTaskId(envelope);
+    if (tid instanceof Response) return tid;
+    return json({ taskId: tid.taskId });
   });
 
 export const onRequestGet: PagesFunction = (ctx) =>
@@ -39,9 +42,10 @@ export const onRequestGet: PagesFunction = (ctx) =>
 
     const res = await jobStatus(key, taskId);
     const data = await res.json<{
-      data: { state?: string; status?: string; failMsg?: string; failCode?: string; resultJson?: string };
+      code?: number; msg?: string;
+      data?: { state?: string; status?: string; failMsg?: string; failCode?: string; resultJson?: string } | null;
     }>();
-
+    if (!data.data) return json({ status: "failed", result: null, error: data.msg ?? "Status unavailable" });
     const s = normalizeStatus(data.data);
     if (s === "success") {
       const { resultUrls } = parseJobResult(data.data.resultJson);

@@ -4,6 +4,7 @@
 import {
   KIE_BASE, userKey, kieHeaders, noKey, badRequest, json, guard,
   createJob, jobStatus, jobsModelId, normalizeStatus, parseJobResult,
+  readTaskId,
 } from "../_lib";
 
 export { onRequestOptions } from "../_lib";
@@ -31,8 +32,10 @@ export const onRequestPost: PagesFunction = (ctx) =>
         : await createJob(key, jobsModelId(b.model), input);
 
     if (!res.ok) return json({ error: await res.text() }, res.status);
-    const data = await res.json<{ data: { taskId: string } }>();
-    return json({ taskId: data.data.taskId });
+    const envelope = await res.json<{ code?: number; msg?: string; data?: { taskId?: string } | null }>();
+    const tid = readTaskId(envelope);
+    if (tid instanceof Response) return tid;
+    return json({ taskId: tid.taskId });
   });
 
 export const onRequestGet: PagesFunction = (ctx) =>
@@ -50,11 +53,13 @@ export const onRequestGet: PagesFunction = (ctx) =>
         headers: kieHeaders(key),
       });
       const data = await res.json<{
-        data: {
+        code?: number; msg?: string;
+        data?: {
           status?: string; state?: string; successFlag?: number; errorMessage?: string;
           response?: { videoUrl?: string; resultUrls?: string[] };
-        };
+        } | null;
       }>();
+      if (!data.data) return json({ status: "failed", result: null, error: data.msg ?? "Status unavailable" });
       const s = normalizeStatus(data.data);
       if (s === "success") {
         const videoUrl = data.data.response?.videoUrl ?? data.data.response?.resultUrls?.[0];
@@ -68,8 +73,10 @@ export const onRequestGet: PagesFunction = (ctx) =>
     // Everything else goes through the Unified Jobs API.
     const res = await jobStatus(key, taskId);
     const data = await res.json<{
-      data: { state?: string; status?: string; failMsg?: string; resultJson?: string };
+      code?: number; msg?: string;
+      data?: { state?: string; status?: string; failMsg?: string; resultJson?: string } | null;
     }>();
+    if (!data.data) return json({ status: "failed", result: null, error: data.msg ?? "Status unavailable" });
     const s = normalizeStatus(data.data);
     if (s === "success") {
       const { resultUrls } = parseJobResult(data.data.resultJson);
