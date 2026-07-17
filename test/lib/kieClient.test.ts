@@ -80,20 +80,20 @@ describe("kieClient: getFromWorker", () => {
 });
 
 describe("kieClient: streamChat", () => {
-  it("POSTs model+messages to /api/chat/stream with the key and abort signal", async () => {
+  it("POSTs model+messages to /api/chat/completions with the key and abort signal", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("ok"));
     vi.stubGlobal("fetch", fetchMock);
     const controller = new AbortController();
 
-    await streamChat("gpt-4o", [{ role: "user", content: "hi" }], controller.signal);
+    await streamChat("claude-opus-4-8", [{ role: "user", content: "hi" }], controller.signal);
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("/api/chat/stream");
+    expect(url).toBe("/api/chat/completions");
     expect(init.method).toBe("POST");
     expect(init.headers["X-KIE-Key"]).toBe("client-key");
     expect(init.signal).toBe(controller.signal);
     expect(JSON.parse(init.body)).toEqual({
-      model: "gpt-4o",
+      model: "claude-opus-4-8",
       messages: [{ role: "user", content: "hi" }],
     });
   });

@@ -22,7 +22,12 @@ https://kieai.redpandaai.co        (File Upload API — separate host)
   `data.resultJson` is a **stringified** JSON → parse, read `resultUrls[]`.
   Generic proxy: `POST /api/jobs/submit` + `GET /api/jobs/status` — adding a new
   Market model is a frontend-only catalog row.
-- **Dedicated routers**: Chat (`/chat/completions`, SSE), Suno (`/generate` + extras:
+- **Chat routers** (base `https://api.kie.ai`, NO `/api/v1`): each model family
+  has its own path and SSE protocol — Claude `/claude/v1/messages` (Anthropic
+  Messages), Gemini `/<slug>/v1/chat/completions` (OpenAI), GPT-5.4+/Grok
+  `/codex|grok/v1/responses` (OpenAI Responses). The Worker maps model ids to
+  the correct route; see `CHAT_ROUTES` in `functions/api/_lib.ts`.
+- **Dedicated routers**: Suno (`/generate` + extras:
   `/generate/extend`, `/vocal-removal/*`, `/wav/*`, `/lyrics/*`,
   `/generate/get-timestamped-lyrics`), Veo 3.1 (`/veo/*`).
 - **Common API**: `GET /chat/credit` → `{ code, msg, data: <number> }` (credits display).
@@ -35,8 +40,8 @@ https://kieai.redpandaai.co        (File Upload API — separate host)
   `pending | success | failed` in `functions/api/_lib.ts`).
 
 ## Features
-- 💬 Chat — streaming LLM via the OpenAI-compatible router (Claude Opus 4.5–4.8 /
-  Sonnet 4.5–5 / Haiku 4.5 / Fable 5, GPT-4o / GPT-5.x / Codex, Gemini 2.5–3.5, Grok 4.x)
+- 💬 Chat — streaming LLM via per-model routers (Claude Opus 4.5–4.8 /
+  Sonnet 4.5–5 / Haiku 4.5 / Fable 5, GPT-5.x / Codex, Gemini 2.5–3.5, Grok 4.x)
 - 🖼️ Image — Create + Edit/Remix modes (GPT Image 1.5/2, Nano Banana Pro/2/Edit, Seedream
   4.0/4.5/5, Imagen 4, Flux-2, Grok Imagine, Ideogram V3, Qwen, Z-Image, Recraft) with
   drag-and-drop upload

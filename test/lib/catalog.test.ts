@@ -343,7 +343,7 @@ describe("Phase 5 — chat catalog expansion", () => {
     "gpt-5-5",
     "gpt-5-4",
     "gpt-5-2",
-    "gpt-codex",
+    "gpt-5-codex",
     "gemini-3-pro",
     "gemini-3-1-pro",
     "gemini-3-flash",
