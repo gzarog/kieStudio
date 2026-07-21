@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { getSavedPrompts, getRecentPrompts, savePrompt, removeSavedPrompt, recordPrompt } from "../../lib/promptLibrary";
 
 interface Props {
@@ -12,9 +12,10 @@ interface Props {
 
 export function PromptBox({ category, value, onChange, placeholder, rows = 3, label }: Props) {
   const [open, setOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
-  const saved = getSavedPrompts(category);
-  const recent = getRecentPrompts(category);
+  const saved = useMemo(() => getSavedPrompts(category), [category, refreshKey]);
+  const recent = useMemo(() => getRecentPrompts(category), [category, refreshKey]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -36,7 +37,7 @@ export function PromptBox({ category, value, onChange, placeholder, rows = 3, la
           className="w-full bg-surface border border-edge text-white rounded-xl p-3 pr-20 text-sm font-mono outline-none focus:border-sky-500" />
         <div className="absolute top-2 right-2 flex gap-1">
           {value.trim() && (
-            <button onClick={() => { savePrompt(category, value.trim()); }}
+            <button onClick={() => { savePrompt(category, value.trim()); setRefreshKey((k) => k + 1); }}
               className="px-1.5 py-0.5 rounded text-[10px] text-sky-400 hover:bg-sky-600/20" title="Save prompt">
               ★
             </button>

@@ -73,7 +73,7 @@ export function ModelPicker({ category, value, onChange, capability, requireImag
         {selected && <CapabilityBadges capabilities={selected.capabilities} />}
         {selected?.costHint && (
           <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-300 text-[10px] font-medium">
-            {selected.costHint} credits
+            {selected.costHint}{selected.costHint.includes("/") ? "" : " credits"}
           </span>
         )}
       </div>

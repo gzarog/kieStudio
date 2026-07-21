@@ -143,11 +143,11 @@ export function TrackActions({ track, onExtended }: TrackActionsProps) {
   return (
     <div className="space-y-2" data-testid="track-actions">
       <div className="flex flex-wrap gap-1.5">
-        <button className={chip(panel === "extend")} onClick={() => toggle("extend")}>Extend</button>
-        <button className={chip(panel === "stems")} onClick={() => toggle("stems")}>Stems</button>
-        <button className={chip(panel === "wav")} onClick={() => toggle("wav")}>WAV</button>
-        <button className={chip(panel === "lyrics")} onClick={() => toggle("lyrics")}>Lyrics</button>
-        <button className={chip(panel === "video")} onClick={() => toggle("video")}>Video</button>
+        <button className={chip(panel === "extend")} onClick={() => toggle("extend")} disabled={!track.model}>Extend</button>
+        <button className={chip(panel === "stems")} onClick={() => toggle("stems")} disabled={!track.taskId}>Stems</button>
+        <button className={chip(panel === "wav")} onClick={() => toggle("wav")} disabled={!track.taskId}>WAV</button>
+        <button className={chip(panel === "lyrics")} onClick={() => toggle("lyrics")} disabled={!track.taskId}>Lyrics</button>
+        <button className={chip(panel === "video")} onClick={() => toggle("video")} disabled={!track.taskId}>Video</button>
       </div>
 
       {panel === "extend" && (

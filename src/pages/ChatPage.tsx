@@ -75,7 +75,13 @@ export function ChatPage() {
 
   useEffect(() => {
     const unsub1 = onNewSession(() => startNew());
-    const unsub2 = onDeleteEntry(() => { if (activeId) deleteConv(activeId); });
+    const unsub2 = onDeleteEntry((index) => {
+      setConversations((prev) => {
+        const target = prev[index];
+        if (target && target.id === activeId) setActiveId("");
+        return prev.filter((_, i) => i !== index);
+      });
+    });
     return () => { unsub1(); unsub2(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);

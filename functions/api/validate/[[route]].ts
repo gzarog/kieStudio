@@ -1,4 +1,4 @@
-import { KIE_BASE, userKey, kieHeaders, noKey, json, guard } from "../_lib";
+import { KIE_BASE, KIE_CHAT_BASE, userKey, kieHeaders, noKey, json, guard } from "../_lib";
 
 export { onRequestOptions } from "../_lib";
 
@@ -31,11 +31,11 @@ export const onRequestGet: PagesFunction = (ctx) =>
     }
 
     // 2) Fallback: a minimal chat call. 2xx means the key authenticates.
-    const probe = await fetch(`${KIE_BASE}/chat/completions`, {
+    const probe = await fetch(`${KIE_CHAT_BASE}/gpt-5-2/v1/chat/completions`, {
       method: "POST",
       headers: kieHeaders(key),
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5-2",
         messages: [{ role: "user", content: "hi" }],
         max_tokens: 1,
       }),

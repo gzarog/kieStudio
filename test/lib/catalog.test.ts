@@ -83,8 +83,7 @@ describe("model catalog", () => {
     const image = imageCapableModels("image");
     expect(image.length).toBeGreaterThan(0);
     expect(image.every((m) => m.imageField)).toBe(true);
-    // Ideogram v3-edit needs a mask_url too — no simple imageField, so excluded.
-    expect(image.find((m) => m.id === "ideogram/v3-edit")).toBeUndefined();
+    expect(image.find((m) => m.id === "ideogram/v3-edit")).toBeDefined();
     const video = imageCapableModels("video");
     expect(video.map((m) => m.id)).toContain("kling-2.6/image-to-video");
   });
