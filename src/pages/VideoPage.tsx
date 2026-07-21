@@ -7,6 +7,7 @@ import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import { ModelPicker } from "../components/shared/ModelPicker";
 import { FileDrop } from "../components/shared/FileDrop";
 import { ExpiryBadge } from "../components/shared/ExpiryBadge";
+import { PromptBox, recordPrompt } from "../components/shared/PromptBox";
 import { loadHistory, saveHistory } from "../lib/history";
 import { uploadFile } from "../lib/upload";
 import {
@@ -14,6 +15,8 @@ import {
   catalogModel, optionDefaults, optionInputFor,
 } from "../lib/types";
 import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
+import { consumeHandoff } from "../lib/handoff";
+import { exportHistory, importHistory, downloadAll } from "../lib/historyExport";
 
 type Mode = "t2v" | "i2v" | "v2v";
 
@@ -32,6 +35,13 @@ export function VideoPage() {
   const [history, setHistory] = useState<VideoItem[]>(() => loadHistory<VideoItem>("video"));
   const lastPrompt = useRef("");
   const { status, result, error, startPolling } = useTaskPoller<{ videoUrl: string }>("/video", 6000);
+
+  // Accept a handoff from another page (e.g. "Use in Video" from Image)
+  useEffect(() => {
+    const h = consumeHandoff();
+    if (h?.kind === "image") { setSourceUrl(h.mediaUrl); setMode("i2v"); }
+    if (h?.kind === "video") { setSourceUrl(h.mediaUrl); setMode("v2v"); }
+  }, []);
 
   useEffect(() => {
     if (status === "success" && result?.videoUrl) {
@@ -81,6 +91,7 @@ export function VideoPage() {
   async function generate() {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
     lastPrompt.current = prompt;
+    recordPrompt("video", prompt);
     try {
       // One payload shape for every mode: options (typed per the model's doc,
       // plus API-required constants) and the uploaded source's per-model field
@@ -126,15 +137,14 @@ export function VideoPage() {
         />
       )}
 
-      <textarea rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)}
+      <PromptBox category="video" value={prompt} onChange={setPrompt}
         placeholder={isV2v
           ? (promptOptional
               ? "Optional — describe the transformation…"
               : "Describe the transformation — e.g. restyle as a watercolour painting…")
           : isI2v
           ? "Describe the motion — e.g. the waves start rolling, camera pulls back…"
-          : "Drone shot over Santorini at golden hour, cinematic motion…"}
-        className="w-full bg-surface border border-edge text-white rounded-xl p-3 text-sm font-mono outline-none focus:border-sky-500" />
+          : "Drone shot over Santorini at golden hour, cinematic motion…"} />
 
       <div className="flex items-center gap-3 flex-wrap">
         {isV2v ? (
@@ -165,13 +175,25 @@ export function VideoPage() {
 
       {history.length > 0 && (
         <div className="space-y-4 pt-2">
+          <div className="flex items-center gap-2 text-xs">
+            <button onClick={() => downloadAll(history.map((h) => h.videoUrl), "video")} className="text-sky-400 hover:text-sky-300">Download all</button>
+            <button onClick={() => exportHistory("video")} className="text-gray-400 hover:text-white">Export</button>
+            <label className="text-gray-400 hover:text-white cursor-pointer">
+              Import
+              <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importHistory("video", f, () => setHistory(loadHistory("video")));
+                e.target.value = "";
+              }} />
+            </label>
+          </div>
           {history.map((item, i) => (
             <div key={i} className="space-y-2">
               <video controls src={item.videoUrl} className="rounded-2xl border border-edge w-full" />
               {item.prompt && <p className="text-gray-400 text-xs truncate">{item.prompt}</p>}
               <div className="flex items-center gap-2">
                 <a href={item.videoUrl} download className="text-sky-400 text-xs underline">Download</a>
-                <ExpiryBadge createdAt={item.createdAt} />
+                <ExpiryBadge createdAt={item.createdAt} mediaUrl={item.videoUrl} />
               </div>
             </div>
           ))}

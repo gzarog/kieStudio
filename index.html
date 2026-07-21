@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b0d12" />
+    <link rel="manifest" href="/manifest.json" />
     <title>KIE Studio — Chat, Image, Music &amp; Video AI</title>
     <meta name="description" content="A global AI studio — stream chat, generate images, music and video from kie.ai. Bring your own key; it never leaves your browser." />
 
@@ -22,5 +23,6 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js");</script>
   </body>
 </html>

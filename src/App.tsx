@@ -7,6 +7,7 @@ import { VideoPage } from "./pages/VideoPage";
 import { SpeechPage } from "./pages/SpeechPage";
 import { KeyModal } from "./components/shared/KeyModal";
 import { Toaster } from "./components/shared/Toaster";
+import { TaskQueueIndicator } from "./components/shared/TaskQueueIndicator";
 import { SessionSidebar } from "./components/shared/SessionSidebar";
 import { hasApiKey } from "./lib/apiKey";
 import { subscribeKeyRequests } from "./lib/ui";
@@ -55,6 +56,7 @@ function AppShell() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-3">
+          <TaskQueueIndicator />
           {credits !== null && (
             <span data-testid="credits-badge"
               className="px-2 py-1 rounded-lg bg-white/5 text-gray-300 text-xs font-medium whitespace-nowrap">
@@ -62,7 +64,8 @@ function AppShell() {
             </span>
           )}
           <button onClick={() => setShowKeyModal(true)}
-            className="px-2 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5">
+            aria-label="API key settings"
+            className="px-2 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-400">
             ⚙️<span className="hidden sm:inline"> Key</span>
           </button>
         </div>

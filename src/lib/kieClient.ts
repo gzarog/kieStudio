@@ -1,4 +1,5 @@
 import { getApiKey } from "./apiKey";
+import { acquireToken } from "./throttle";
 
 const headers = () => ({
   "Content-Type": "application/json",
@@ -34,12 +35,14 @@ async function throwFor(res: Response): Promise<never> {
 }
 
 export async function postToWorker<T>(path: string, body: unknown): Promise<T> {
+  await acquireToken();
   const res = await fetch(`/api${path}`, { method: "POST", headers: headers(), body: JSON.stringify(body) });
   if (!res.ok) await throwFor(res);
   return res.json();
 }
 
 export async function getFromWorker<T>(path: string): Promise<T> {
+  await acquireToken();
   const res = await fetch(`/api${path}`, { headers: headers() });
   if (!res.ok) await throwFor(res);
   return res.json();

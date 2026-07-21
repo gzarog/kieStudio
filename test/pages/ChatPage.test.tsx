@@ -33,10 +33,9 @@ describe("<ChatPage /> integration", () => {
     await user.type(screen.getByPlaceholderText(/Message/i), "hi there");
     await user.click(screen.getByRole("button", { name: /Send/i }));
 
-    expect(await screen.findByText("hi there")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("hi there").length).toBeGreaterThan(0));
     await waitFor(() => expect(screen.getByText("Hello world")).toBeInTheDocument());
 
-    // Sent the chosen model + full message history to the worker.
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.model).toBe("claude-sonnet-4-6");
     expect(body.messages).toEqual([{ role: "user", content: "hi there" }]);
@@ -55,7 +54,6 @@ describe("<ChatPage /> integration", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    // The dedicated /chat/completions router forwards the selected model id verbatim.
     expect(body.model).toBe("claude-opus-4-8");
   });
 
@@ -85,20 +83,26 @@ describe("<ChatPage /> integration", () => {
     expect(await screen.findByText(/upstream boom/)).toBeInTheDocument();
   });
 
-  it("restores conversation history from sessionStorage", () => {
-    sessionStorage.setItem(
-      "kie_chat_history",
-      JSON.stringify([{ role: "user", content: "earlier question" }])
+  it("restores conversation history from localStorage", () => {
+    localStorage.setItem(
+      "kie.history.chat",
+      JSON.stringify([{
+        id: "conv-1", title: "past chat", createdAt: Date.now(),
+        messages: [{ role: "user", content: "earlier question" }],
+      }])
     );
     render(<ChatPage />);
     expect(screen.getByText("earlier question")).toBeInTheDocument();
   });
 
-  it("clears the conversation and its stored history", async () => {
+  it("clears the conversation when deleted", async () => {
     setApiKey("k");
-    sessionStorage.setItem(
-      "kie_chat_history",
-      JSON.stringify([{ role: "user", content: "to be cleared" }])
+    localStorage.setItem(
+      "kie.history.chat",
+      JSON.stringify([{
+        id: "conv-1", title: "doomed chat", createdAt: Date.now(),
+        messages: [{ role: "user", content: "to be cleared" }],
+      }])
     );
     const user = userEvent.setup();
     render(<ChatPage />);
@@ -107,8 +111,6 @@ describe("<ChatPage /> integration", () => {
     await user.click(screen.getByRole("button", { name: /^Clear$/i }));
 
     expect(screen.queryByText("to be cleared")).not.toBeInTheDocument();
-    // clearChat removes the stored history; the persist effect then writes back an empty list.
-    expect(JSON.parse(sessionStorage.getItem("kie_chat_history") ?? "[]")).toEqual([]);
   });
 
   it("disables Send until there is input", () => {

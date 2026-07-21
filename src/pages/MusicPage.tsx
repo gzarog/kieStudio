@@ -339,7 +339,7 @@ export function MusicPage() {
             <audio controls src={t.audioUrl} className="w-full h-9" />
             <div className="flex items-center gap-2">
               <a href={t.audioUrl} download className="text-sky-400 text-xs underline">Download MP3</a>
-              <ExpiryBadge createdAt={t.createdAt} />
+              <ExpiryBadge createdAt={t.createdAt} mediaUrl={t.audioUrl} />
             </div>
             <TrackActions track={t} onExtended={(tracks) => setHistory((h) => [...tracks.map((x) => ({ ...x, createdAt: Date.now() })), ...h])} />
           </div>

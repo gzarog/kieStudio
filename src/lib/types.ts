@@ -98,6 +98,8 @@ export interface CatalogModel {
   options?: VideoOption[];
   /** Constant `input` fields the API requires (e.g. Kling's `sound`/`multi_shots`). */
   fixedInput?: Record<string, unknown>;
+  /** Approximate cost hint (credits per generation) shown in the model picker. */
+  costHint?: string;
 }
 
 // Every `id` below is copied verbatim from the model's docs.kie.ai page (or
@@ -108,31 +110,31 @@ export const MODEL_CATALOG: CatalogModel[] = [
   // ── Chat (per-model dedicated routers — Anthropic / OpenAI / Responses) ──
   // Each model id is copied from its docs.kie.ai page; the Worker routes to the
   // correct path and protocol (see CHAT_ROUTES in functions/api/_lib.ts).
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~1/msg" },
+  { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~1/msg" },
   // Phase 5 chat expansion
-  { id: "claude-opus-4-8", label: "Claude Opus 4.8", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "claude-opus-4-7", label: "Claude Opus 4.7", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "claude-opus-4-6", label: "Claude Opus 4.6", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "claude-opus-4-5", label: "Claude Opus 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "claude-fable-5", label: "Claude Fable 5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gpt-5-5", label: "GPT-5.5", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gpt-5-4", label: "GPT-5.4", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gpt-5-2", label: "GPT-5.2", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gpt-5-codex", label: "GPT Codex", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gemini-3-pro", label: "Gemini 3 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gemini-3-1-pro", label: "Gemini 3.1 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gemini-3-flash", label: "Gemini 3 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gemini-3-5-flash", label: "Gemini 3.5 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "gemini-2-5-flash", label: "Gemini 2.5 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "grok-4-5", label: "Grok 4.5", provider: "xAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
-  { id: "grok-4-3", label: "Grok 4.3", provider: "xAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true },
+  { id: "claude-opus-4-8", label: "Claude Opus 4.8", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~3/msg" },
+  { id: "claude-opus-4-7", label: "Claude Opus 4.7", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~3/msg" },
+  { id: "claude-opus-4-6", label: "Claude Opus 4.6", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~3/msg" },
+  { id: "claude-opus-4-5", label: "Claude Opus 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~3/msg" },
+  { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~1/msg" },
+  { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~1/msg" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~0.5/msg" },
+  { id: "claude-fable-5", label: "Claude Fable 5", provider: "Anthropic", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~3/msg" },
+  { id: "gpt-5-5", label: "GPT-5.5", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~2/msg" },
+  { id: "gpt-5-4", label: "GPT-5.4", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~2/msg" },
+  { id: "gpt-5-2", label: "GPT-5.2", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~1/msg" },
+  { id: "gpt-5-codex", label: "GPT Codex", provider: "OpenAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~2/msg" },
+  { id: "gemini-3-pro", label: "Gemini 3 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~1/msg" },
+  { id: "gemini-3-1-pro", label: "Gemini 3.1 Pro", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~1/msg" },
+  { id: "gemini-3-flash", label: "Gemini 3 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~0.5/msg" },
+  { id: "gemini-3-5-flash", label: "Gemini 3.5 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~0.5/msg" },
+  { id: "gemini-2-5-flash", label: "Gemini 2.5 Flash", provider: "Google", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~0.5/msg" },
+  { id: "grok-4-5", label: "Grok 4.5", provider: "xAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~2/msg" },
+  { id: "grok-4-3", label: "Grok 4.3", provider: "xAI", category: "chat", capabilities: ["chat"], verified: true, dedicated: true, costHint: "~1/msg" },
 
   // ── Image (Unified Jobs API) ──
-  { id: "gpt-image-2", label: "GPT Image 2", provider: "OpenAI", category: "image", capabilities: ["t2i"], verified: true, inputs: ["size"] },
+  { id: "gpt-image-2", label: "GPT Image 2", provider: "OpenAI", category: "image", capabilities: ["t2i"], verified: true, inputs: ["size"], costHint: "~10" },
   { id: "nano-banana", label: "Nano Banana Pro", provider: "Google", category: "image", capabilities: ["t2i", "i2i"], verified: true, inputs: ["image"], imageField: "image_input" },
   { id: "google/nano-banana", label: "Nano Banana", provider: "Google", category: "image", capabilities: ["t2i", "i2i"], verified: true, inputs: ["image"] },
   { id: "grok-imagine/text-to-image", label: "Grok Imagine (T2I)", provider: "xAI", category: "image", capabilities: ["t2i"], verified: true },
