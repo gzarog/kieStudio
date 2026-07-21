@@ -22,7 +22,7 @@ describe("<SpeechPage /> integration", () => {
     vi.spyOn(ui, "toast").mockImplementation(() => {});
 
     render(<SpeechPage />);
-    type(screen.getByRole("textbox", { name: "" }), "hello world");
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "hello world");
     await clickGenerate();
     expect(requestKey).toHaveBeenCalled();
   });

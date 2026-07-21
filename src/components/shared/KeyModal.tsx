@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getApiKey, setApiKey, clearApiKey } from "../../lib/apiKey";
 import { validateKey } from "../../lib/kieClient";
 import { toast } from "../../lib/ui";
@@ -13,6 +13,12 @@ type Check =
 export function KeyModal({ onClose }: { onClose: () => void }) {
   const [key, setKey] = useState(getApiKey());
   const [check, setCheck] = useState<Check>({ state: "idle" });
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   async function save() {
     const trimmed = key.trim();
@@ -35,7 +41,7 @@ export function KeyModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="API key settings">
       <div className="bg-surface border border-edge rounded-2xl p-6 w-full max-w-md space-y-4">
         <h2 className="text-white text-lg font-semibold">🔑 Your kie.ai API key</h2>
         <p className="text-gray-400 text-sm">

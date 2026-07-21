@@ -9,11 +9,13 @@ interface SessionEntry {
 
 function chatSessions(): SessionEntry[] {
   try {
-    const raw = sessionStorage.getItem("kie_chat_history");
-    const msgs = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(msgs) || msgs.length === 0) return [];
-    const first = msgs.find((m: { role: string; content: string }) => m.role === "user");
-    return [{ label: first?.content?.slice(0, 60) || "Chat session", createdAt: Date.now() }];
+    const raw = localStorage.getItem("kie.history.chat");
+    const convs = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(convs)) return [];
+    return convs.map((c: { title?: string; createdAt?: number }) => ({
+      label: c.title || "Chat",
+      createdAt: c.createdAt,
+    }));
   } catch {
     return [];
   }

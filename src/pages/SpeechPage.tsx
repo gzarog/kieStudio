@@ -6,9 +6,11 @@ import { useTaskPoller } from "../hooks/useTaskPoller";
 import { TaskStatusBadge } from "../components/shared/TaskStatusBadge";
 import { ModelPicker } from "../components/shared/ModelPicker";
 import { ExpiryBadge } from "../components/shared/ExpiryBadge";
+import { PromptBox, recordPrompt } from "../components/shared/PromptBox";
 import { loadHistory, saveHistory } from "../lib/history";
 import { defaultModel } from "../lib/types";
 import { onNewSession, onDeleteEntry } from "../lib/sessionBus";
+import { exportHistory, importHistory, downloadAll } from "../lib/historyExport";
 
 // Verified per-model defaults: Turbo 2.5 documents a voice ID default (James),
 // Multilingual V2's example uses a preset name. Both accept either form.
@@ -74,6 +76,7 @@ export function SpeechPage() {
   async function generate() {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
     lastText.current = text;
+    recordPrompt("speech", text);
     try {
       const input = speechInputFor(model, { text, voice, speed });
       const { taskId } = await postToWorker<{ taskId: string }>("/jobs/submit", { model, input });
@@ -84,9 +87,8 @@ export function SpeechPage() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-4">
       <h1 className="text-white text-xl font-semibold">🗣️ Speech</h1>
-      <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)}
-        placeholder="Type the text to speak — up to 5000 characters…"
-        className="w-full bg-surface border border-edge text-white rounded-xl p-3 text-sm font-mono outline-none focus:border-sky-500" />
+      <PromptBox category="speech" value={text} onChange={setText} rows={4}
+        placeholder="Type the text to speak — up to 5000 characters…" />
       <div className="flex items-center gap-3 flex-wrap">
         <ModelPicker category="speech" value={model} onChange={pickModel} />
         <input value={voice} onChange={(e) => setVoice(e.target.value)}
@@ -103,13 +105,27 @@ export function SpeechPage() {
       </div>
       <TaskStatusBadge status={status} error={error} />
 
+      {history.length > 0 && (
+        <div className="flex items-center gap-2 text-xs">
+          <button onClick={() => downloadAll(history.map((h) => h.audioUrl), "speech")} className="text-sky-400 hover:text-sky-300">Download all</button>
+          <button onClick={() => exportHistory("speech")} className="text-gray-400 hover:text-white">Export</button>
+          <label className="text-gray-400 hover:text-white cursor-pointer">
+            Import
+            <input type="file" accept=".json" className="hidden" onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importHistory("speech", f, () => setHistory(loadHistory("speech")));
+              e.target.value = "";
+            }} />
+          </label>
+        </div>
+      )}
       {history.map((item, i) => (
         <div key={i} className="bg-surface border border-edge rounded-2xl p-4 space-y-2">
           <p className="text-gray-400 text-xs truncate">{item.text}</p>
           <audio controls src={item.audioUrl} className="w-full h-9" />
           <div className="flex items-center gap-2">
             <a href={item.audioUrl} download className="text-sky-400 text-xs underline">Download audio</a>
-            <ExpiryBadge createdAt={item.createdAt} />
+            <ExpiryBadge createdAt={item.createdAt} mediaUrl={item.audioUrl} />
           </div>
         </div>
       ))}

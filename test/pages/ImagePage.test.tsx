@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { ImagePage } from "../../src/pages/ImagePage";
+
+const renderPage = () => render(<MemoryRouter><ImagePage /></MemoryRouter>);
 import { setApiKey, clearApiKey } from "../../src/lib/apiKey";
 import * as ui from "../../src/lib/ui";
 import { fetchResponse } from "../helpers";
@@ -26,8 +29,8 @@ describe("<ImagePage /> integration", () => {
     const requestKey = vi.spyOn(ui, "requestKey").mockImplementation(() => {});
     const toast = vi.spyOn(ui, "toast").mockImplementation(() => {});
 
-    render(<ImagePage />);
-    type(screen.getByRole("textbox"), "a cat");
+    renderPage();
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "a cat");
     await clickGenerate();
 
     expect(toast).toHaveBeenCalledWith(expect.stringMatching(/API key/i), "error");
@@ -42,8 +45,8 @@ describe("<ImagePage /> integration", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<ImagePage />);
-    type(screen.getByRole("textbox"), "a cat on the moon");
+    renderPage();
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "a cat on the moon");
     await clickGenerate();
 
     // Submit fired; badge shows pending.
@@ -72,8 +75,8 @@ describe("<ImagePage /> integration", () => {
       )
     );
 
-    render(<ImagePage />);
-    type(screen.getByRole("textbox"), "a cat");
+    renderPage();
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "a cat");
     await clickGenerate();
     await tick(0);
 
@@ -90,7 +93,7 @@ describe("<ImagePage /> integration", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<ImagePage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Edit \/ Remix/i }));
 
     // Upload a source image through the drop zone.
@@ -100,7 +103,7 @@ describe("<ImagePage /> integration", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    type(screen.getByRole("textbox"), "replace the sky");
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "replace the sky");
     await clickGenerate();
     await tick(0);
 
@@ -116,9 +119,9 @@ describe("<ImagePage /> integration", () => {
 
   it("Edit mode: Generate stays disabled until a source image is uploaded", async () => {
     setApiKey("k");
-    render(<ImagePage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Edit \/ Remix/i }));
-    type(screen.getByRole("textbox"), "some edit");
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "some edit");
     expect(screen.getByRole("button", { name: /Generate/i })).toBeDisabled();
   });
 
@@ -127,8 +130,8 @@ describe("<ImagePage /> integration", () => {
     const fetchMock = vi.fn().mockResolvedValue(fetchResponse({ taskId: "T1" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<ImagePage />);
-    type(screen.getByRole("textbox"), "a cat");
+    renderPage();
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "a cat");
     type(screen.getByDisplayValue("GPT Image 2"), "nano-banana");
     await clickGenerate();
     await tick(0);
@@ -142,8 +145,8 @@ describe("<ImagePage /> integration", () => {
     const fetchMock = vi.fn().mockResolvedValue(fetchResponse({ taskId: "T1" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<ImagePage />);
-    type(screen.getByRole("textbox"), "a temple");
+    renderPage();
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "a temple");
     type(screen.getByDisplayValue("GPT Image 2"), "seedream/4.5-text-to-image");
     await clickGenerate();
     await tick(0);
@@ -162,7 +165,7 @@ describe("<ImagePage /> integration", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<ImagePage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Edit \/ Remix/i }));
     type(screen.getByDisplayValue("Nano Banana Pro"), "gpt-image-2-image-to-image");
 
@@ -172,7 +175,7 @@ describe("<ImagePage /> integration", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    type(screen.getByRole("textbox"), "make it snow");
+    type(screen.getByRole("textbox", { name: /Prompt/i }), "make it snow");
     await clickGenerate();
     await tick(0);
 
