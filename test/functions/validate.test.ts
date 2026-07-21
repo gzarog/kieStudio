@@ -50,7 +50,7 @@ describe("validate route", () => {
     const res = await validate();
     expect(await res.json()).toEqual({ valid: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[1][0]).toBe("https://api.kie.ai/api/v1/chat/completions");
+    expect(fetchMock.mock.calls[1][0]).toBe("https://api.kie.ai/gpt-5-2/v1/chat/completions");
   });
 
   it("falls back to the chat probe when the credits fetch throws", async () => {

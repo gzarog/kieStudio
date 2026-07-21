@@ -22,7 +22,9 @@ export async function downloadAll(urls: string[], prefix: string) {
       const ext = blob.type.includes("video") ? "mp4"
         : blob.type.includes("audio") ? "mp3"
         : blob.type.includes("png") ? "png" : "jpg";
-      downloadUrl(URL.createObjectURL(blob), `${prefix}-${++count}.${ext}`);
+      const objectUrl = URL.createObjectURL(blob);
+      downloadUrl(objectUrl, `${prefix}-${++count}.${ext}`);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
     } catch {
       continue;
     }
@@ -33,7 +35,9 @@ export async function downloadAll(urls: string[], prefix: string) {
 export function exportHistory(page: string) {
   const data = loadHistory(page);
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  downloadUrl(URL.createObjectURL(blob), `kie-${page}-history.json`);
+  const objectUrl = URL.createObjectURL(blob);
+  downloadUrl(objectUrl, `kie-${page}-history.json`);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
   toast(`Exported ${data.length} entries`, "success");
 }
 

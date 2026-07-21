@@ -51,8 +51,12 @@ export async function vaultSave(remoteUrl: string): Promise<boolean> {
   }
 }
 
+const objectUrlCache = new Map<string, string>();
+
 export async function vaultGet(remoteUrl: string): Promise<string | null> {
   try {
+    const cached = objectUrlCache.get(remoteUrl);
+    if (cached) return cached;
     const db = await openDb();
     const entry = await new Promise<VaultEntry | undefined>((resolve, reject) => {
       const tx = db.transaction(STORE, "readonly");
@@ -61,9 +65,19 @@ export async function vaultGet(remoteUrl: string): Promise<string | null> {
       req.onerror = () => reject(req.error);
     });
     if (!entry) return null;
-    return URL.createObjectURL(entry.blob);
+    const objectUrl = URL.createObjectURL(entry.blob);
+    objectUrlCache.set(remoteUrl, objectUrl);
+    return objectUrl;
   } catch {
     return null;
+  }
+}
+
+export function vaultRevokeUrl(remoteUrl: string): void {
+  const objectUrl = objectUrlCache.get(remoteUrl);
+  if (objectUrl) {
+    URL.revokeObjectURL(objectUrl);
+    objectUrlCache.delete(remoteUrl);
   }
 }
 

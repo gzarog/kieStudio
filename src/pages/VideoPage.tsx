@@ -64,7 +64,7 @@ export function VideoPage() {
     if (!hasApiKey()) { toast("Add your kie.ai API key first.", "error"); requestKey(); return; }
     setUploading(true);
     try {
-      const { fileUrl } = await uploadFile(file);
+      const { fileUrl } = await uploadFile(file, "videos");
       setSourceUrl(fileUrl);
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e), "error");

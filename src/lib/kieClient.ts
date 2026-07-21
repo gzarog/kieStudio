@@ -48,11 +48,12 @@ export async function getFromWorker<T>(path: string): Promise<T> {
   return res.json();
 }
 
-export function streamChat(
+export async function streamChat(
   model: string,
   messages: { role: string; content: string }[],
   signal?: AbortSignal
 ) {
+  await acquireToken();
   return fetch("/api/chat/completions", {
     method: "POST",
     headers: headers(),
